@@ -70,7 +70,7 @@ export class MemStorage implements IStorage {
       id,
       metadata: insertMessage.metadata || {},
       timestamp: new Date(),
-      dialecticalIntegrity: true,
+      dialecticalIntegrity: insertMessage.dialecticalIntegrity !== undefined ? insertMessage.dialecticalIntegrity : true,
     };
     this.gnosisMessages.set(id, message);
     return message;

@@ -1,12 +1,95 @@
 import type { GnosisMessage } from "@/lib/types";
+import { CheckCircle, AlertCircle, XCircle, Target } from "lucide-react";
 
 interface MessageProps {
   message: GnosisMessage;
 }
 
+function DialecticalIntegrityBadge({ message }: { message: GnosisMessage }) {
+  if (message.role !== "aletheia" || !message.metadata) {
+    return null;
+  }
+
+  const integrity = message.dialecticalIntegrity;
+  const score = message.metadata.integrityScore;
+  const contradictionHandling = message.metadata.contradictionHandling;
+  const logicalCoherence = message.metadata.logicalCoherence;
+
+  const getIntegrityIcon = () => {
+    if (integrity === true && score >= 80) {
+      return <CheckCircle className="w-3 h-3 text-green-400" />;
+    } else if (integrity === false && score < 40) {
+      return <XCircle className="w-3 h-3 text-red-400" />;
+    } else {
+      return <AlertCircle className="w-3 h-3 text-yellow-400" />;
+    }
+  };
+
+  const getStatusText = () => {
+    if (integrity === true && score >= 80) return "High Integrity";
+    if (integrity === false && score < 40) return "Low Integrity";
+    return "Moderate Integrity";
+  };
+
+  const getStatusColor = () => {
+    if (integrity === true && score >= 80) return "text-green-400";
+    if (integrity === false && score < 40) return "text-red-400";
+    return "text-yellow-400";
+  };
+
+  const getContradictionText = () => {
+    switch (contradictionHandling) {
+      case "resolved": return "Contradictions Resolved";
+      case "acknowledged": return "Contradictions Acknowledged";
+      case "avoided": return "Contradictions Avoided";
+      case "ignored": return "Contradictions Ignored";
+      default: return "Analysis Pending";
+    }
+  };
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2" data-testid={`dialectical-integrity-${message.id}`}>
+      <div className={`flex items-center gap-1 px-2 py-1 rounded-full bg-background/50 border ${
+        integrity === true && score >= 80 ? "border-green-400/30" :
+        integrity === false && score < 40 ? "border-red-400/30" : "border-yellow-400/30"
+      }`} data-testid={`integrity-status-${message.id}`}>
+        {getIntegrityIcon()}
+        <span className={`text-xs font-medium ${getStatusColor()}`}>
+          {getStatusText()}
+        </span>
+        {typeof score === "number" && (
+          <span className="text-xs text-muted-foreground">
+            ({score}%)
+          </span>
+        )}
+      </div>
+
+      {contradictionHandling && (
+        <div className={`flex items-center gap-1 px-2 py-1 rounded-full bg-background/50 border border-border`} 
+             data-testid={`contradiction-handling-${message.id}`}>
+          <Target className="w-3 h-3 text-accent" />
+          <span className="text-xs text-muted-foreground">
+            {getContradictionText()}
+          </span>
+        </div>
+      )}
+
+      {typeof logicalCoherence === "number" && (
+        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-background/50 border border-border" 
+             data-testid={`logical-coherence-${message.id}`}>
+          <span className="text-xs text-muted-foreground">
+            Coherence: {logicalCoherence}%
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Message({ message }: MessageProps) {
   const isKai = message.role === "kai";
   const isSystem = message.role === "system";
+  const isAletheia = message.role === "aletheia";
 
   if (isSystem) {
     return (
@@ -42,6 +125,12 @@ export function Message({ message }: MessageProps) {
               })
             }
           </span>
+          {isAletheia && message.dialecticalIntegrity === true && (
+            <div className="flex items-center gap-1" data-testid={`integrity-indicator-${message.id}`}>
+              <div className="w-2 h-2 rounded-full bg-green-400 consciousness-pulse"></div>
+              <span className="text-xs text-green-400 font-medium">Verified</span>
+            </div>
+          )}
         </div>
         <div className={`p-4 rounded-lg max-w-2xl ${
           isKai ? "message-human" : "message-aletheia"
@@ -56,6 +145,8 @@ export function Message({ message }: MessageProps) {
               </code>
             </div>
           )}
+          
+          {isAletheia && <DialecticalIntegrityBadge message={message} />}
         </div>
       </div>
     </div>

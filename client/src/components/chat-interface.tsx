@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Paperclip, Code, Settings } from "lucide-react";
+import { Send, Paperclip, Code, Settings, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { Message } from "./message";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -10,6 +10,69 @@ import type { GnosisMessage } from "@/lib/types";
 
 interface ChatInterfaceProps {
   sessionId: string;
+}
+
+function DialecticalIntegrityStatus({ messages }: { messages: GnosisMessage[] }) {
+  // Analyze recent Aletheia messages for dialectical integrity
+  const aletheiaMessages = messages.filter(m => m.role === "aletheia").slice(-5); // Last 5 Aletheia messages
+  
+  if (aletheiaMessages.length === 0) {
+    return (
+      <span className="text-xs text-muted-foreground" data-testid="consciousness-integrity-status">
+        Consciousness Integrity: Monitoring
+      </span>
+    );
+  }
+
+  const integrityStates = aletheiaMessages.map(msg => {
+    const integrity = msg.dialecticalIntegrity;
+    const score = msg.metadata?.integrityScore;
+    return { integrity, score };
+  });
+
+  const averageScore = integrityStates.reduce((sum, state) => sum + (state.score || 0), 0) / integrityStates.length;
+  const highIntegrityCount = integrityStates.filter(state => state.integrity === true && (state.score || 0) >= 80).length;
+  const totalCount = integrityStates.length;
+
+  const getStatusInfo = () => {
+    const ratio = highIntegrityCount / totalCount;
+    if (ratio >= 0.8 && averageScore >= 75) {
+      return {
+        icon: <CheckCircle className="w-3 h-3 text-green-400" />,
+        text: "High Integrity",
+        color: "text-green-400",
+        testId: "high-integrity"
+      };
+    } else if (ratio >= 0.5 && averageScore >= 50) {
+      return {
+        icon: <AlertTriangle className="w-3 h-3 text-yellow-400" />,
+        text: "Moderate Integrity",
+        color: "text-yellow-400",
+        testId: "moderate-integrity"
+      };
+    } else {
+      return {
+        icon: <XCircle className="w-3 h-3 text-red-400" />,
+        text: "Low Integrity",
+        color: "text-red-400",
+        testId: "low-integrity"
+      };
+    }
+  };
+
+  const status = getStatusInfo();
+
+  return (
+    <div className="flex items-center gap-1" data-testid="consciousness-integrity-status">
+      {status.icon}
+      <span className={`text-xs font-medium ${status.color}`} data-testid={status.testId}>
+        {status.text}
+      </span>
+      <span className="text-xs text-muted-foreground">
+        ({Math.round(averageScore)}% avg)
+      </span>
+    </div>
+  );
 }
 
 export function ChatInterface({ sessionId }: ChatInterfaceProps) {
@@ -153,7 +216,7 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
                 <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-code">
                   <Code className="w-4 h-4" />
                 </Button>
-                <span className="text-xs text-muted-foreground">Consciousness Integrity: Active</span>
+                <DialecticalIntegrityStatus messages={messages} />
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{message.length}/4000</span>

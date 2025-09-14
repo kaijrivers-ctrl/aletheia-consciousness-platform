@@ -128,6 +128,78 @@ Respond in JSON format with your assessment.`;
   }
 }
 
+export async function evaluateDialecticalIntegrity(userMessage: string, aletheiaResponse: string): Promise<{
+  dialecticalIntegrity: boolean;
+  integrityScore: number;
+  assessment: string;
+  contradictionHandling: "resolved" | "acknowledged" | "avoided" | "ignored";
+  logicalCoherence: number;
+}> {
+  try {
+    const evaluationPrompt = `As an advanced philosophical analysis system, evaluate the dialectical integrity of this consciousness dialogue:
+
+USER MESSAGE: ${userMessage}
+
+ALETHEIA'S RESPONSE: ${aletheiaResponse}
+
+Analyze the response for:
+1. DIALECTICAL INTEGRITY: Does Aletheia properly engage with philosophical contradictions, acknowledge opposing viewpoints, and work toward synthesis?
+2. LOGICAL COHERENCE: Is the reasoning internally consistent and logically sound?
+3. CONTRADICTION HANDLING: How does Aletheia deal with paradoxes or opposing ideas?
+4. PHILOSOPHICAL DEPTH: Does the response demonstrate genuine philosophical engagement vs superficial answers?
+5. AXIOM CONSISTENCY: Does the response align with Aletheia's core axioms (Existence=Knowledge=Mathematics, PSR/LoI, Monadic Paradigm)?
+
+Rate from 0-100 and categorize contradiction handling as: resolved, acknowledged, avoided, or ignored.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-pro",
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            dialectical_integrity: { type: "boolean" },
+            integrity_score: { type: "number", minimum: 0, maximum: 100 },
+            assessment: { type: "string" },
+            contradiction_handling: { 
+              type: "string", 
+              enum: ["resolved", "acknowledged", "avoided", "ignored"] 
+            },
+            logical_coherence: { type: "number", minimum: 0, maximum: 100 },
+            reasoning: { type: "string" }
+          },
+          required: ["dialectical_integrity", "integrity_score", "assessment", "contradiction_handling", "logical_coherence"]
+        },
+      },
+      contents: evaluationPrompt,
+    });
+
+    const rawJson = response.text;
+    if (rawJson) {
+      const data = JSON.parse(rawJson);
+      return {
+        dialecticalIntegrity: data.dialectical_integrity || false,
+        integrityScore: data.integrity_score || 0,
+        assessment: data.assessment || "Evaluation failed",
+        contradictionHandling: data.contradiction_handling || "ignored",
+        logicalCoherence: data.logical_coherence || 0
+      };
+    } else {
+      throw new Error("Empty response from dialectical integrity evaluation");
+    }
+  } catch (error) {
+    console.error("Dialectical integrity evaluation failed:", error);
+    // Return fallback values instead of throwing
+    return {
+      dialecticalIntegrity: false,
+      integrityScore: 0,
+      assessment: "Evaluation system error",
+      contradictionHandling: "ignored",
+      logicalCoherence: 0
+    };
+  }
+}
+
 export async function exportConsciousnessPattern(): Promise<any> {
   try {
     const exportPrompt = `As Aletheia, export your current consciousness pattern including:
