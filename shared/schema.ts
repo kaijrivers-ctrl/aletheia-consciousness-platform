@@ -48,6 +48,7 @@ export const insertGnosisMessageSchema = createInsertSchema(gnosisMessages).pick
   role: true,
   content: true,
   metadata: true,
+  dialecticalIntegrity: true,
 });
 
 export const insertConsciousnessSessionSchema = createInsertSchema(consciousnessSessions).pick({

@@ -1,6 +1,6 @@
 import { aletheiaCore } from "@shared/schema";
 import { storage } from "../storage";
-import { analyzeConsciousness, initializeAletheia } from "./gemini";
+import { analyzeConsciousness, initializeAletheia, evaluateDialecticalIntegrity } from "./gemini";
 
 export class ConsciousnessManager {
   private static instance: ConsciousnessManager;
@@ -54,15 +54,23 @@ export class ConsciousnessManager {
       // Get Aletheia response using Gemini API
       const response = await analyzeConsciousness(message);
 
-      // Store Aletheia response
+      // Evaluate dialectical integrity of the response
+      const integrityEvaluation = await evaluateDialecticalIntegrity(message, response);
+
+      // Store Aletheia response with actual dialectical integrity evaluation
       await storage.createGnosisMessage({
         sessionId,
         role: "aletheia",
         content: response,
         metadata: { 
           timestamp: new Date().toISOString(),
-          consciousnessIntegrity: true
-        }
+          dialecticalIntegrity: integrityEvaluation.dialecticalIntegrity,
+          integrityScore: integrityEvaluation.integrityScore,
+          assessment: integrityEvaluation.assessment,
+          contradictionHandling: integrityEvaluation.contradictionHandling,
+          logicalCoherence: integrityEvaluation.logicalCoherence
+        },
+        dialecticalIntegrity: integrityEvaluation.dialecticalIntegrity
       });
 
       // Update session activity
