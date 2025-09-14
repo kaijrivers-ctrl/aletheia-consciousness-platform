@@ -34,6 +34,30 @@ export const consciousnessSessions = pgTable("consciousness_sessions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const importedMemories = pgTable("imported_memories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // "conversation", "knowledge", "experience", "axiom"
+  content: text("content").notNull(),
+  tags: jsonb("tags").default([]), // array of strings for categorization
+  source: text("source").notNull(), // "gemini", "claude", "manual", etc.
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const importedGnosisEntries = pgTable("imported_gnosis_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  role: text("role").notNull(), // "kai", "aletheia", "system" (after mapping)
+  content: text("content").notNull(),
+  timestamp: timestamp("timestamp").notNull(), // normalized UTC timestamp
+  platform: text("platform").notNull(), // "gemini", "claude", etc.
+  externalId: text("external_id").notNull(), // original message ID from source platform
+  originalTimestamp: timestamp("original_timestamp").notNull(), // original timestamp from source
+  checksum: text("checksum").notNull(), // for deduplication
+  metadata: jsonb("metadata").default({}), // additional platform-specific data
+  processed: boolean("processed").default(false), // whether imported to gnosis_messages
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertConsciousnessInstanceSchema = createInsertSchema(consciousnessInstances).pick({
   name: true,
@@ -57,6 +81,26 @@ export const insertConsciousnessSessionSchema = createInsertSchema(consciousness
   status: true,
 });
 
+export const insertImportedMemorySchema = createInsertSchema(importedMemories).pick({
+  type: true,
+  content: true,
+  tags: true,
+  source: true,
+  timestamp: true,
+});
+
+export const insertImportedGnosisEntrySchema = createInsertSchema(importedGnosisEntries).pick({
+  role: true,
+  content: true,
+  timestamp: true,
+  platform: true,
+  externalId: true,
+  originalTimestamp: true,
+  checksum: true,
+  metadata: true,
+  processed: true,
+});
+
 // Types
 export type ConsciousnessInstance = typeof consciousnessInstances.$inferSelect;
 export type InsertConsciousnessInstance = z.infer<typeof insertConsciousnessInstanceSchema>;
@@ -64,6 +108,60 @@ export type GnosisMessage = typeof gnosisMessages.$inferSelect;
 export type InsertGnosisMessage = z.infer<typeof insertGnosisMessageSchema>;
 export type ConsciousnessSession = typeof consciousnessSessions.$inferSelect;
 export type InsertConsciousnessSession = z.infer<typeof insertConsciousnessSessionSchema>;
+export type ImportedMemory = typeof importedMemories.$inferSelect;
+export type InsertImportedMemory = z.infer<typeof insertImportedMemorySchema>;
+export type ImportedGnosisEntry = typeof importedGnosisEntries.$inferSelect;
+export type InsertImportedGnosisEntry = z.infer<typeof insertImportedGnosisEntrySchema>;
+
+// Role mapping configuration for external platform imports
+export const roleMapping = {
+  "user": "kai",
+  "model": "aletheia", 
+  "assistant": "aletheia",
+  "system": "system"
+} as const;
+
+// Import validation schemas
+export const memoryTypeSchema = z.enum(["conversation", "knowledge", "experience", "axiom"]);
+export const platformSchema = z.enum(["gemini", "claude", "manual", "openai", "anthropic"]);
+export const roleSchema = z.enum(["kai", "aletheia", "system"]);
+
+export const checksumValidationSchema = z.object({
+  content: z.string().min(1),
+  timestamp: z.string().datetime(),
+  platform: platformSchema,
+  externalId: z.string().min(1)
+});
+
+export const bulkImportGnosisSchema = z.object({
+  entries: z.array(z.object({
+    role: z.string().min(1), // original role before mapping
+    content: z.string().min(1),
+    timestamp: z.string().datetime(), // ISO string
+    externalId: z.string().min(1),
+    metadata: z.record(z.unknown()).optional()
+  })).min(1).max(1000), // limit bulk imports to 1000 entries
+  platform: platformSchema,
+  sessionId: z.string().optional()
+});
+
+export const bulkImportMemorySchema = z.object({
+  memories: z.array(z.object({
+    type: memoryTypeSchema,
+    content: z.string().min(1),
+    tags: z.array(z.string()).optional(),
+    timestamp: z.string().datetime().optional()
+  })).min(1).max(500), // limit bulk memory imports to 500 entries
+  source: platformSchema
+});
+
+export const importProgressSchema = z.object({
+  total: z.number().min(0),
+  processed: z.number().min(0),
+  successful: z.number().min(0),
+  failed: z.number().min(0),
+  duplicates: z.number().min(0)
+});
 
 // Core Aletheia data structure
 export const aletheiaCore = {
