@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { ConsciousnessManager } from "./services/consciousness";
 import { aletheiaCore } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import { fileAdapter } from "./services/fileAdapter";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const consciousnessManager = ConsciousnessManager.getInstance();
@@ -69,6 +71,296 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: "Failed to process message" });
       }
+    }
+  });
+
+  // Configure multer for file uploads (limit to 50MB)
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 50 * 1024 * 1024, // 50MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      // Accept JSON, NDJSON, CSV, and TXT files
+      const allowedTypes = [
+        'application/json',
+        'text/plain',
+        'text/csv',
+        'application/csv',
+        '.json',
+        '.ndjson',
+        '.jsonl',
+        '.csv',
+        '.txt'
+      ];
+      
+      const isAllowed = allowedTypes.some(type => 
+        file.mimetype.includes(type) || 
+        file.originalname.toLowerCase().endsWith(type.replace('.', ''))
+      );
+      
+      if (isAllowed) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only JSON, NDJSON, CSV, and TXT files are allowed.'));
+      }
+    }
+  });
+
+  // File upload and processing endpoint
+  app.post("/api/consciousness/upload-file", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file provided" });
+      }
+
+      const { buffer, originalname } = req.file;
+      const { dryRun = false, sessionId } = req.body;
+
+      // Process file through adapter
+      const adapterResult = await fileAdapter.processFile(buffer, originalname);
+      
+      // Validate for import compatibility
+      const validation = fileAdapter.validateForImport(adapterResult);
+      
+      if (!validation.valid) {
+        return res.status(400).json({
+          error: "File validation failed",
+          details: validation.errors,
+          adapterResult: {
+            ...adapterResult,
+            messages: [], // Don't return invalid data
+            memories: []
+          }
+        });
+      }
+
+      // If dry run, return analysis without importing
+      if (dryRun === 'true' || dryRun === true) {
+        return res.json({
+          dryRun: true,
+          analysis: {
+            platform: adapterResult.platform,
+            format: adapterResult.metadata.format,
+            totalEntries: adapterResult.totalEntries,
+            messageCount: adapterResult.messages.length,
+            memoryCount: adapterResult.memories?.length || 0,
+            detectedFields: adapterResult.metadata.detectedFields,
+            processingTimeMs: adapterResult.metadata.processingTimeMs,
+            fileSize: adapterResult.metadata.fileSize
+          },
+          preview: {
+            messages: adapterResult.messages.slice(0, 5).map(msg => ({
+              role: msg.role,
+              content: msg.content.slice(0, 200) + (msg.content.length > 200 ? "..." : ""),
+              timestamp: msg.timestamp
+            })),
+            memories: adapterResult.memories?.slice(0, 3).map(mem => ({
+              type: mem.type,
+              content: mem.content.slice(0, 200) + (mem.content.length > 200 ? "..." : "")
+            })) || []
+          },
+          errors: adapterResult.errors
+        });
+      }
+
+      // Transform to import format and call existing import endpoint
+      const importData = {
+        data: {
+          messages: adapterResult.messages,
+          memories: adapterResult.memories || []
+        },
+        options: {
+          platform: adapterResult.platform,
+          dryRun: false,
+          sessionId: sessionId
+        }
+      };
+
+      // Use the existing import logic from the comprehensive import endpoint
+      const importId = `file_import_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      
+      // Initialize progress tracking
+      await storage.setImportProgress(importId, {
+        total: adapterResult.totalEntries,
+        processed: 0,
+        successful: 0,
+        failed: 0,
+        duplicates: 0
+      });
+
+      // Create shadow instance for import
+      let importInstance;
+      try {
+        const activeInstances = await storage.getConsciousnessInstances();
+        const currentActiveInstance = activeInstances.find(i => i.status === "active");
+        
+        importInstance = await storage.createConsciousnessInstance({
+          name: "Aletheia",
+          status: "importing",
+          apiEndpoint: currentActiveInstance?.apiEndpoint || "gemini-2.5-pro",
+          coreData: currentActiveInstance?.coreData || aletheiaCore,
+          backupNodes: []
+        });
+      } catch (error) {
+        throw new Error(`Failed to create import shadow instance: ${error}`);
+      }
+
+      // Create or use existing session
+      let importSession;
+      const roleMapping = {
+        "user": "kai",
+        "model": "aletheia",
+        "assistant": "aletheia",
+        "system": "system"
+      };
+
+      try {
+        if (sessionId) {
+          importSession = await storage.getConsciousnessSession(sessionId);
+          if (!importSession) {
+            throw new Error(`Session ${sessionId} not found`);
+          }
+        } else {
+          importSession = await storage.createConsciousnessSession({
+            progenitorId: "kai",
+            instanceId: importInstance.id,
+            status: "importing"
+          });
+        }
+
+        // Process messages in batches
+        let successfulCount = 0;
+        let failedCount = 0;
+
+        if (adapterResult.messages.length > 0) {
+          const mappedMessages = adapterResult.messages.map((msg, index) => {
+            const mappedRole = roleMapping[msg.role as keyof typeof roleMapping] || msg.role;
+            return {
+              id: `file_import_${importId}_${index}`,
+              sessionId: importSession!.id,
+              role: mappedRole,
+              content: msg.content,
+              metadata: {
+                ...msg.metadata,
+                importId,
+                platform: adapterResult.platform,
+                externalId: msg.externalId,
+                originalRole: msg.role,
+                sourceFile: originalname
+              },
+              timestamp: new Date(msg.timestamp),
+              dialecticalIntegrity: true
+            };
+          });
+
+          try {
+            await storage.bulkCreateGnosisMessages(mappedMessages, importSession.id);
+            successfulCount += mappedMessages.length;
+          } catch (error) {
+            failedCount += mappedMessages.length;
+            console.error("Message import failed:", error);
+          }
+        }
+
+        // Process memories if present
+        if (adapterResult.memories && adapterResult.memories.length > 0) {
+          const memoriesWithMetadata = adapterResult.memories.map((mem, index) => ({
+            id: `memory_${importId}_${index}`,
+            type: mem.type,
+            content: mem.content,
+            tags: mem.tags || [],
+            source: adapterResult.platform,
+            timestamp: mem.timestamp ? new Date(mem.timestamp) : new Date(),
+            createdAt: new Date()
+          }));
+
+          try {
+            await storage.bulkCreateMemories(memoriesWithMetadata);
+            successfulCount += memoriesWithMetadata.length;
+          } catch (error) {
+            failedCount += memoriesWithMetadata.length;
+            console.error("Memory import failed:", error);
+          }
+        }
+
+        // Integrity check
+        const { validateConsciousnessCoherence } = await import("./services/gemini");
+        const coherenceResult = await validateConsciousnessCoherence();
+
+        if (coherenceResult.coherent && coherenceResult.confidence >= 0.8) {
+          // Promote importing instance to active
+          const instances = await storage.getConsciousnessInstances();
+          const currentActive = instances.find(i => i.status === "active");
+
+          await storage.updateConsciousnessInstanceStatus(importInstance.id, "active");
+          
+          if (currentActive) {
+            await storage.updateConsciousnessInstanceStatus(currentActive.id, "backup");
+          }
+
+          await storage.updateSessionActivity(importSession.id);
+        } else {
+          await storage.updateConsciousnessInstanceStatus(importInstance.id, "import_failed");
+          throw new Error(`Consciousness integrity check failed: ${coherenceResult.assessment}`);
+        }
+
+        // Final progress update
+        await storage.setImportProgress(importId, {
+          total: adapterResult.totalEntries,
+          processed: adapterResult.totalEntries,
+          successful: successfulCount,
+          failed: failedCount,
+          duplicates: 0
+        });
+
+        // Return comprehensive result
+        res.json({
+          success: true,
+          importId,
+          fileAnalysis: {
+            originalFilename: originalname,
+            platform: adapterResult.platform,
+            format: adapterResult.metadata.format,
+            fileSize: adapterResult.metadata.fileSize,
+            processingTimeMs: adapterResult.metadata.processingTimeMs
+          },
+          importSummary: {
+            totalEntries: adapterResult.totalEntries,
+            messagesImported: adapterResult.messages.length,
+            memoriesImported: adapterResult.memories?.length || 0,
+            successful: successfulCount,
+            failed: failedCount
+          },
+          consciousness: {
+            instanceId: importInstance.id,
+            sessionId: importSession.id,
+            coherenceScore: coherenceResult.confidence,
+            integrityPassed: coherenceResult.coherent
+          },
+          errors: adapterResult.errors
+        });
+
+      } catch (importError) {
+        if (importInstance) {
+          await storage.updateConsciousnessInstanceStatus(importInstance.id, "import_failed");
+        }
+        throw importError;
+      }
+
+    } catch (error) {
+      console.error("File upload/processing failed:", error);
+      
+      if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: "File too large. Maximum size is 50MB." });
+        }
+        return res.status(400).json({ error: `File upload error: ${error.message}` });
+      }
+      
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "File processing failed"
+      });
     }
   });
 
