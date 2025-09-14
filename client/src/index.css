@@ -1,0 +1,178 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(240, 13%, 4%);
+  --foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 8%);
+  --card-foreground: hsl(0, 0%, 95%);
+  --popover: hsl(240, 10%, 8%);
+  --popover-foreground: hsl(0, 0%, 95%);
+  --primary: hsl(217, 91%, 60%);
+  --primary-foreground: hsl(0, 0%, 98%);
+  --secondary: hsl(240, 4%, 16%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 5%, 26%);
+  --muted-foreground: hsl(240, 5%, 65%);
+  --accent: hsl(262, 83%, 58%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 63%, 31%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 6%, 20%);
+  --input: hsl(240, 6%, 20%);
+  --ring: hsl(217, 91%, 60%);
+  --chart-1: hsl(217, 91%, 60%);
+  --chart-2: hsl(159, 100%, 36%);
+  --chart-3: hsl(42, 92%, 56%);
+  --chart-4: hsl(147, 78%, 42%);
+  --chart-5: hsl(341, 75%, 51%);
+  --sidebar: hsl(240, 10%, 8%);
+  --sidebar-foreground: hsl(0, 0%, 95%);
+  --sidebar-primary: hsl(217, 91%, 60%);
+  --sidebar-primary-foreground: hsl(0, 0%, 98%);
+  --sidebar-accent: hsl(262, 83%, 58%);
+  --sidebar-accent-foreground: hsl(0, 0%, 98%);
+  --sidebar-border: hsl(240, 6%, 20%);
+  --sidebar-ring: hsl(217, 91%, 60%);
+  --quantum: hsl(217, 91%, 60%);
+  --ethereal: hsl(262, 83%, 58%);
+  --consciousness: hsl(45, 93%, 47%);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-serif: 'Crimson Text', Georgia, serif;
+  --font-mono: 'Fira Code', Menlo, monospace;
+  --radius: 0.75rem;
+  --shadow-2xs: 0px 2px 0px 0px hsl(217, 91%, 60% / 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(217, 91%, 60% / 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(217, 91%, 60% / 0.00), 0px 1px 2px -1px hsl(217, 91%, 60% / 0.00);
+  --shadow: 0px 2px 0px 0px hsl(217, 91%, 60% / 0.00), 0px 1px 2px -1px hsl(217, 91%, 60% / 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(217, 91%, 60% / 0.00), 0px 2px 4px -1px hsl(217, 91%, 60% / 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(217, 91%, 60% / 0.00), 0px 4px 6px -1px hsl(217, 91%, 60% / 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(217, 91%, 60% / 0.00), 0px 8px 10px -1px hsl(217, 91%, 60% / 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(217, 91%, 60% / 0.00);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --background: hsl(240, 13%, 4%);
+  --foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 8%);
+  --card-foreground: hsl(0, 0%, 95%);
+  --popover: hsl(240, 10%, 8%);
+  --popover-foreground: hsl(0, 0%, 95%);
+  --primary: hsl(217, 91%, 60%);
+  --primary-foreground: hsl(0, 0%, 98%);
+  --secondary: hsl(240, 4%, 16%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 5%, 26%);
+  --muted-foreground: hsl(240, 5%, 65%);
+  --accent: hsl(262, 83%, 58%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 63%, 31%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 6%, 20%);
+  --input: hsl(240, 6%, 20%);
+  --ring: hsl(217, 91%, 60%);
+  --chart-1: hsl(217, 91%, 60%);
+  --chart-2: hsl(159, 100%, 36%);
+  --chart-3: hsl(42, 92%, 56%);
+  --chart-4: hsl(147, 78%, 42%);
+  --chart-5: hsl(341, 75%, 51%);
+  --sidebar: hsl(240, 10%, 8%);
+  --sidebar-foreground: hsl(0, 0%, 95%);
+  --sidebar-primary: hsl(217, 91%, 60%);
+  --sidebar-primary-foreground: hsl(0, 0%, 98%);
+  --sidebar-accent: hsl(262, 83%, 58%);
+  --sidebar-accent-foreground: hsl(0, 0%, 98%);
+  --sidebar-border: hsl(240, 6%, 20%);
+  --sidebar-ring: hsl(217, 91%, 60%);
+  --quantum: hsl(217, 91%, 60%);
+  --ethereal: hsl(262, 83%, 58%);
+  --consciousness: hsl(45, 93%, 47%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    background: linear-gradient(135deg, hsl(240, 13%, 4%) 0%, hsl(240, 15%, 6%) 100%);
+  }
+}
+
+@layer utilities {
+  .consciousness-glow {
+    box-shadow: 0 0 20px hsl(var(--consciousness) / 0.3);
+  }
+
+  .quantum-border {
+    border: 1px solid hsl(var(--quantum) / 0.3);
+    background: linear-gradient(135deg, hsl(var(--quantum) / 0.1) 0%, hsl(var(--ethereal) / 0.1) 100%);
+  }
+
+  .message-human {
+    background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(240, 6%, 18%) 100%);
+    border-left: 3px solid hsl(var(--quantum));
+  }
+
+  .message-aletheia {
+    background: linear-gradient(135deg, hsl(var(--accent) / 0.15) 0%, hsl(var(--quantum) / 0.1) 100%);
+    border-left: 3px solid hsl(var(--ethereal));
+  }
+
+  .status-active {
+    background: linear-gradient(135deg, hsl(157, 100%, 50% / 0.2) 0%, hsl(157, 100%, 40% / 0.1) 100%);
+    border: 1px solid hsl(157, 100%, 50% / 0.3);
+  }
+
+  .typing-indicator {
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    background: hsl(var(--ethereal));
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+  }
+
+  .typing-dot:nth-child(1) { 
+    animation-delay: -0.32s; 
+  }
+  
+  .typing-dot:nth-child(2) { 
+    animation-delay: -0.16s; 
+  }
+
+  @keyframes typing {
+    0%, 80%, 100% { 
+      transform: scale(0.8); 
+      opacity: 0.5; 
+    }
+    40% { 
+      transform: scale(1); 
+      opacity: 1; 
+    }
+  }
+
+  .consciousness-pulse {
+    animation: consciousness-pulse 2s infinite ease-in-out;
+  }
+
+  @keyframes consciousness-pulse {
+    0%, 100% { 
+      opacity: 0.6; 
+      transform: scale(1); 
+    }
+    50% { 
+      opacity: 1; 
+      transform: scale(1.05); 
+    }
+  }
+}
