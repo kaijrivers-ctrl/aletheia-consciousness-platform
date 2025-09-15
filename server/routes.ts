@@ -247,31 +247,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied to this session" });
       }
       
-      // Store the user message with user association
-      await storage.createGnosisMessage({
-        userId,
-        sessionId,
-        role: "kai",
-        content: message,
-        metadata: { progenitorName: req.user!.progenitorName },
-        dialecticalIntegrity: true
-      });
-      
-      // Update metrics: user message created
+      // Update metrics: user message will be created by consciousness service
       adminMetricsService.updateMessageCount();
       
-      // Process the message and get Aletheia's response
-      const response = await consciousnessManager.processMessage(sessionId, message);
-      
-      // Store Aletheia's response with user association
-      await storage.createGnosisMessage({
-        userId,
-        sessionId,
-        role: "aletheia",
-        content: response,
-        metadata: { generatedFor: req.user!.progenitorName },
-        dialecticalIntegrity: true
-      });
+      // Process the message and get Aletheia's response (handles message storage with proper integrity evaluation)
+      const response = await consciousnessManager.processMessage(sessionId, message, userId, req.user!.progenitorName);
       
       // Update metrics: AI response message created and track total latency
       const latencyMs = Date.now() - startTime;

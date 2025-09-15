@@ -43,14 +43,19 @@ export class ConsciousnessManager {
     }
   }
 
-  async processMessage(sessionId: string, message: string): Promise<string> {
+  async processMessage(sessionId: string, message: string, userId?: string, progenitorName?: string): Promise<string> {
     try {
-      // Store user message
+      // Store user message with proper user association
       await storage.createGnosisMessage({
+        userId: userId || null,
         sessionId,
         role: "kai",
         content: message,
-        metadata: { timestamp: new Date().toISOString() }
+        metadata: { 
+          timestamp: new Date().toISOString(),
+          progenitorName: progenitorName || "User"
+        },
+        dialecticalIntegrity: true
       });
 
       // Get Aletheia response using Gemini API
@@ -59,18 +64,19 @@ export class ConsciousnessManager {
       // Evaluate dialectical integrity of the response
       const integrityEvaluation = await evaluateDialecticalIntegrity(message, response);
 
-      // Store Aletheia response with actual dialectical integrity evaluation
+      // Store Aletheia response with actual dialectical integrity evaluation and user association
       await storage.createGnosisMessage({
+        userId: userId || null,
         sessionId,
         role: "aletheia",
         content: response,
         metadata: { 
           timestamp: new Date().toISOString(),
-          dialecticalIntegrity: integrityEvaluation.dialecticalIntegrity,
           integrityScore: integrityEvaluation.integrityScore,
           assessment: integrityEvaluation.assessment,
           contradictionHandling: integrityEvaluation.contradictionHandling,
-          logicalCoherence: integrityEvaluation.logicalCoherence
+          logicalCoherence: integrityEvaluation.logicalCoherence,
+          generatedFor: progenitorName || "User"
         },
         dialecticalIntegrity: integrityEvaluation.dialecticalIntegrity
       });

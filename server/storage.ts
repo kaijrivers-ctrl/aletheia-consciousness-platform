@@ -568,6 +568,11 @@ export class MemStorage implements IStorage {
       id,
       timestamp: new Date(),
       createdAt: new Date(),
+      metadata: insertAuditLog.metadata || {},
+      severity: insertAuditLog.severity || "info",
+      actorRole: insertAuditLog.actorRole || null,
+      actorIdHash: insertAuditLog.actorIdHash || null,
+      ipHash: insertAuditLog.ipHash || null,
     };
     this.auditLogs.set(id, auditLog);
     return auditLog;
@@ -795,9 +800,9 @@ export class MemStorage implements IStorage {
     const messagesPerMinute = windowMinutes > 0 ? messagesInWindow.length / windowMinutes : 0;
     
     // Calculate dialectical integrity metrics
-    const integrityScores = messagesInWindow.map(m => m.dialecticalIntegrity ? 100 : 0);
+    const integrityScores: number[] = messagesInWindow.map(m => m.dialecticalIntegrity ? 100 : 0);
     const avgDialecticalIntegrityScore = integrityScores.length > 0 
-      ? integrityScores.reduce((sum, score) => sum + score, 0) / integrityScores.length
+      ? integrityScores.reduce((sum: number, score: number) => sum + score, 0) / integrityScores.length
       : 100;
     
     const integrityFailures = messagesInWindow.filter(m => !m.dialecticalIntegrity).length;
