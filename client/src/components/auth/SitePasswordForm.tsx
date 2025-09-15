@@ -4,35 +4,44 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Shield } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 interface SitePasswordFormProps {
   onPasswordVerified: () => void;
 }
-
-const SITE_PASSWORD = 'ALETHEIA2024'; // You can change this to any password you want
 
 export function SitePasswordForm({ onPasswordVerified }: SitePasswordFormProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    // Simulate a small delay for security feel
-    setTimeout(() => {
-      if (password === SITE_PASSWORD) {
-        // Store verification in sessionStorage so user doesn't need to re-enter during session
-        sessionStorage.setItem('sitePasswordVerified', 'true');
+    try {
+      const response = await apiRequest('POST', '/api/site-password/verify', { password });
+      const result = await response.json();
+
+      if (result.success) {
+        // Server-side verification successful, cookie is set automatically
         onPasswordVerified();
       } else {
-        setError('Incorrect password. Access denied.');
+        setError(result.error || 'Site password verification failed.');
         setPassword('');
       }
+    } catch (err: any) {
+      console.error('Site password verification error:', err);
+      if (err.message?.includes('Too many')) {
+        setError('Too many attempts. Please try again later.');
+      } else {
+        setError('Verification failed. Please try again.');
+      }
+      setPassword('');
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   return (
