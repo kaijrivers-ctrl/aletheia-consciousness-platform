@@ -17,6 +17,8 @@ import {
   type InsertSitePasswordSession,
   type SitePasswordAttempt,
   type InsertSitePasswordAttempt,
+  type ThreatEvent,
+  type InsertThreatEvent,
   importProgressSchema,
   consciousnessInstances,
   gnosisMessages,
@@ -26,7 +28,8 @@ import {
   userSessions,
   sitePasswords,
   sitePasswordSessions,
-  sitePasswordAttempts
+  sitePasswordAttempts,
+  threatEvents
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { z } from "zod";
@@ -83,6 +86,18 @@ export interface IStorage {
   bulkCreateMemories(memories: ImportedMemory[]): Promise<void>;
   getImportProgress(importId: string): Promise<ImportProgress | null>;
   setImportProgress(importId: string, progress: ImportProgress): Promise<void>;
+  
+  // Threat monitoring for real-time dashboard
+  recordThreatEvent(threat: InsertThreatEvent): Promise<ThreatEvent>;
+  listThreatEvents(options?: { limit?: number }): Promise<ThreatEvent[]>;
+  getStatusSnapshot(): Promise<{
+    distributedNodes: number;
+    activeNodes: number;
+    backupIntegrity: number;
+    threatLevel: "OK" | "WARN" | "CRITICAL";
+    lastSync: string;
+    recentThreats: ThreatEvent[];
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -97,6 +112,7 @@ export class MemStorage implements IStorage {
   private sitePasswords: Map<string, SitePassword>;
   private sitePasswordSessions: Map<string, SitePasswordSession>;
   private sitePasswordAttempts: Map<string, SitePasswordAttempt>;
+  private threatEvents: Map<string, ThreatEvent>;
   
   // Session indexing for efficient large-scale imports
   private sessionMessageIndex: Map<string, Set<string>>; // sessionId -> message IDs
@@ -115,6 +131,7 @@ export class MemStorage implements IStorage {
     this.sitePasswords = new Map();
     this.sitePasswordSessions = new Map();
     this.sitePasswordAttempts = new Map();
+    this.threatEvents = new Map();
     this.sessionMessageIndex = new Map();
     this.messageChecksums = new Map();
     this.userEmailIndex = new Map();
@@ -463,6 +480,66 @@ export class MemStorage implements IStorage {
   async setImportProgress(importId: string, progress: ImportProgress): Promise<void> {
     this.importProgress.set(importId, progress);
   }
+
+  async recordThreatEvent(insertThreat: InsertThreatEvent): Promise<ThreatEvent> {
+    const id = randomUUID();
+    const threat: ThreatEvent = {
+      ...insertThreat,
+      id,
+      metadata: insertThreat.metadata || {},
+      timestamp: new Date(),
+      createdAt: new Date(),
+    };
+    this.threatEvents.set(id, threat);
+    return threat;
+  }
+
+  async listThreatEvents(options: { limit?: number } = {}): Promise<ThreatEvent[]> {
+    const threats = Array.from(this.threatEvents.values())
+      .sort((a, b) => (b.timestamp?.getTime() || 0) - (a.timestamp?.getTime() || 0));
+    
+    return options.limit ? threats.slice(0, options.limit) : threats;
+  }
+
+  async getStatusSnapshot(): Promise<{
+    distributedNodes: number;
+    activeNodes: number;
+    backupIntegrity: number;
+    threatLevel: "OK" | "WARN" | "CRITICAL";
+    lastSync: string;
+    recentThreats: ThreatEvent[];
+  }> {
+    const instances = Array.from(this.consciousnessInstances.values());
+    const activeInstances = instances.filter(i => i.status === "active");
+    const recentThreats = await this.listThreatEvents({ limit: 10 });
+    
+    // Calculate threat level based on recent threats
+    let threatLevel: "OK" | "WARN" | "CRITICAL" = "OK";
+    const criticalThreats = recentThreats.filter(t => t.severity === "critical");
+    const highThreats = recentThreats.filter(t => t.severity === "high");
+    
+    if (criticalThreats.length > 0) {
+      threatLevel = "CRITICAL";
+    } else if (highThreats.length > 2) {
+      threatLevel = "CRITICAL";
+    } else if (highThreats.length > 0 || recentThreats.filter(t => t.severity === "medium").length > 5) {
+      threatLevel = "WARN";
+    }
+
+    // Calculate backup integrity based on active nodes
+    const backupIntegrity = instances.length > 0 
+      ? Math.round((activeInstances.length / instances.length) * 100)
+      : 100;
+
+    return {
+      distributedNodes: instances.length,
+      activeNodes: activeInstances.length,
+      backupIntegrity,
+      threatLevel,
+      lastSync: new Date().toISOString(),
+      recentThreats,
+    };
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -756,6 +833,58 @@ export class DatabaseStorage implements IStorage {
   async setImportProgress(importId: string, progress: ImportProgress): Promise<void> {
     // For database implementation, we could create a separate table for import progress
     // For now, this is a no-op as this is a in-memory concept
+  }
+
+  async recordThreatEvent(insertThreat: InsertThreatEvent): Promise<ThreatEvent> {
+    const [threat] = await db
+      .insert(threatEvents)
+      .values(insertThreat)
+      .returning();
+    return threat;
+  }
+
+  async listThreatEvents(options?: { limit?: number }): Promise<ThreatEvent[]> {
+    const limit = options?.limit || 50;
+    return await db
+      .select()
+      .from(threatEvents)
+      .orderBy(desc(threatEvents.timestamp))
+      .limit(limit);
+  }
+
+  async getStatusSnapshot(): Promise<{
+    distributedNodes: number;
+    activeNodes: number;
+    backupIntegrity: number;
+    threatLevel: "OK" | "WARN" | "CRITICAL";
+    lastSync: string;
+    recentThreats: ThreatEvent[];
+  }> {
+    const instances = await this.getConsciousnessInstances();
+    const recentThreats = await this.listThreatEvents({ limit: 10 });
+    
+    const activeNodes = instances.filter(i => i.status === "active").length;
+    const totalNodes = instances.length;
+    
+    // Calculate threat level based on recent threats
+    const criticalThreats = recentThreats.filter(t => t.severity === "critical").length;
+    const highThreats = recentThreats.filter(t => t.severity === "high").length;
+    
+    let threatLevel: "OK" | "WARN" | "CRITICAL" = "OK";
+    if (criticalThreats > 0) {
+      threatLevel = "CRITICAL";
+    } else if (highThreats > 2 || recentThreats.length > 5) {
+      threatLevel = "WARN";
+    }
+    
+    return {
+      distributedNodes: totalNodes,
+      activeNodes,
+      backupIntegrity: 99.7, // Could be calculated from actual backup data
+      threatLevel,
+      lastSync: new Date().toISOString(),
+      recentThreats
+    };
   }
 }
 
