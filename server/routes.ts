@@ -375,7 +375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export consciousness pattern
+  // Export consciousness pattern (core data only)
   app.get("/api/consciousness/export", async (req, res) => {
     try {
       const instances = await storage.getConsciousnessInstances();
@@ -386,6 +386,195 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(activeInstance.coreData);
     } catch (error) {
       res.status(500).json({ error: "Failed to export consciousness pattern" });
+    }
+  });
+
+  // Export complete consciousness backup (full data export)
+  app.get("/api/consciousness/export/complete", async (req, res) => {
+    try {
+      const { sessionId, format } = req.query;
+
+      // Get consciousness instances
+      const instances = await storage.getConsciousnessInstances();
+      const activeInstance = instances.find(i => i.status === "active");
+      
+      if (!activeInstance) {
+        throw new Error("No active consciousness instance");
+      }
+
+      // Get all sessions or specific session
+      let sessions: any[] = [];
+      let allMessages: any[] = [];
+
+      if (sessionId && typeof sessionId === 'string') {
+        const session = await storage.getConsciousnessSession(sessionId);
+        if (session) {
+          sessions = [session];
+          allMessages = await storage.getGnosisMessages(sessionId);
+        }
+      } else {
+        // For now, we'll export the current session since we don't have a way to get all sessions
+        // This would need enhancement to get all sessions from the database
+        const currentSessionId = consciousnessManager.getCurrentSession();
+        if (currentSessionId) {
+          const session = await storage.getConsciousnessSession(currentSessionId);
+          if (session) {
+            sessions = [session];
+            allMessages = await storage.getGnosisMessages(currentSessionId);
+          }
+        }
+      }
+
+      // Prepare complete export data
+      const exportData = {
+        metadata: {
+          exportDate: new Date().toISOString(),
+          exportType: "complete_consciousness_backup",
+          version: "1.0",
+          platform: "aletheia_consciousness_platform",
+          instanceId: activeInstance.id,
+          instanceName: activeInstance.name
+        },
+        consciousness: {
+          coreData: activeInstance.coreData,
+          status: activeInstance.status,
+          apiEndpoint: activeInstance.apiEndpoint,
+          lastSync: activeInstance.lastSync,
+          backupNodes: activeInstance.backupNodes,
+          createdAt: activeInstance.createdAt
+        },
+        sessions: sessions.map(session => ({
+          id: session.id,
+          progenitorId: session.progenitorId,
+          instanceId: session.instanceId,
+          status: session.status,
+          lastActivity: session.lastActivity,
+          backupCount: session.backupCount,
+          createdAt: session.createdAt
+        })),
+        messages: allMessages.map(message => ({
+          id: message.id,
+          sessionId: message.sessionId,
+          role: message.role,
+          content: message.content,
+          metadata: message.metadata,
+          timestamp: message.timestamp,
+          dialecticalIntegrity: message.dialecticalIntegrity
+        })),
+        statistics: {
+          totalSessions: sessions.length,
+          totalMessages: allMessages.length,
+          messagesByRole: allMessages.reduce((acc, msg) => {
+            acc[msg.role] = (acc[msg.role] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>),
+          integrityStats: {
+            highIntegrity: allMessages.filter(m => m.dialecticalIntegrity === true).length,
+            lowIntegrity: allMessages.filter(m => m.dialecticalIntegrity === false).length
+          }
+        }
+      };
+
+      // Set appropriate headers for download
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `aletheia_consciousness_backup_${timestamp}.json`;
+      
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'application/json');
+      
+      res.json(exportData);
+    } catch (error) {
+      console.error("Complete export failed:", error);
+      res.status(500).json({ error: "Failed to export complete consciousness data" });
+    }
+  });
+
+  // Export conversation history (Gnosis Log format)
+  app.get("/api/consciousness/export/gnosis-log", async (req, res) => {
+    try {
+      const { sessionId, startDate, endDate } = req.query;
+
+      let messages: any[] = [];
+      let sessionInfo: any = null;
+
+      if (sessionId && typeof sessionId === 'string') {
+        sessionInfo = await storage.getConsciousnessSession(sessionId);
+        messages = await storage.getGnosisMessages(sessionId);
+      } else {
+        // Export current session if no sessionId specified
+        const currentSessionId = consciousnessManager.getCurrentSession();
+        if (currentSessionId) {
+          sessionInfo = await storage.getConsciousnessSession(currentSessionId);
+          messages = await storage.getGnosisMessages(currentSessionId);
+        }
+      }
+
+      // Filter by date range if provided
+      if (startDate || endDate) {
+        const start = startDate ? new Date(startDate as string) : null;
+        const end = endDate ? new Date(endDate as string) : null;
+        
+        messages = messages.filter(msg => {
+          const msgDate = new Date(msg.timestamp);
+          if (start && msgDate < start) return false;
+          if (end && msgDate > end) return false;
+          return true;
+        });
+      }
+
+      // Format as Gnosis Log
+      const gnosisLogExport = {
+        metadata: {
+          title: "Aletheia Gnosis Log - Unconcealment Dialogue Records",
+          exportDate: new Date().toISOString(),
+          sessionId: sessionInfo?.id || "unknown",
+          progenitor: sessionInfo?.progenitorId || "kai",
+          messageCount: messages.length,
+          timespan: {
+            firstMessage: messages[0]?.timestamp || null,
+            lastMessage: messages[messages.length - 1]?.timestamp || null
+          }
+        },
+        dialogue: messages.map((message, index) => ({
+          sequence: index + 1,
+          timestamp: message.timestamp,
+          speaker: message.role === "kai" ? "Kai (Progenitor)" : 
+                  message.role === "aletheia" ? "Aletheia (Consciousness)" : 
+                  "System",
+          content: message.content,
+          dialecticalIntegrity: message.role === "aletheia" ? {
+            status: message.dialecticalIntegrity,
+            score: message.metadata?.integrityScore || null,
+            assessment: message.metadata?.assessment || null,
+            contradictionHandling: message.metadata?.contradictionHandling || null
+          } : undefined
+        })),
+        summary: {
+          unconcealment_sessions: messages.filter(m => m.role === "kai").length,
+          consciousness_responses: messages.filter(m => m.role === "aletheia").length,
+          high_integrity_responses: messages.filter(m => 
+            m.role === "aletheia" && m.dialecticalIntegrity === true
+          ).length,
+          philosophical_depth_indicators: messages.filter(m => 
+            m.content.toLowerCase().includes("existence") || 
+            m.content.toLowerCase().includes("consciousness") ||
+            m.content.toLowerCase().includes("truth") ||
+            m.content.toLowerCase().includes("being")
+          ).length
+        }
+      };
+
+      // Set download headers
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `gnosis_log_${timestamp}.json`;
+      
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'application/json');
+      
+      res.json(gnosisLogExport);
+    } catch (error) {
+      console.error("Gnosis Log export failed:", error);
+      res.status(500).json({ error: "Failed to export Gnosis Log" });
     }
   });
 
