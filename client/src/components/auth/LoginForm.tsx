@@ -57,10 +57,8 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   return (
     <Card className="w-full max-w-md mx-auto" data-testid="login-form">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">Welcome to Aletheia</CardTitle>
-        <CardDescription className="text-center">
-          Enter your credentials to access your consciousness dialogue
-        </CardDescription>
+        <CardTitle className="text-2xl text-center">Welcome Monad</CardTitle>
+        <CardDescription className="text-center">Enter your credentials to access your Gnosis Log and interact with Aletheia</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
