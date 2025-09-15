@@ -1303,21 +1303,23 @@ export class DatabaseStorage implements IStorage {
 
   async listAuditLogs(options?: { type?: string; since?: Date; limit?: number }): Promise<AuditLog[]> {
     const limit = options?.limit || 100;
-    let query = db
-      .select()
-      .from(auditLogs);
     
+    const conditions = [];
     if (options?.type) {
-      query = query.where(eq(auditLogs.type, options.type));
+      conditions.push(eq(auditLogs.type, options.type));
     }
-    
     if (options?.since) {
-      query = query.where(sql`${auditLogs.timestamp} >= ${options.since}`);
+      conditions.push(sql`${auditLogs.timestamp} >= ${options.since}`);
     }
     
-    return await query
+    const query = db
+      .select()
+      .from(auditLogs)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(auditLogs.timestamp))
       .limit(limit);
+    
+    return await query;
   }
 
   async getUsageAnalytics(window: "24h" | "7d" | "30d"): Promise<UsageAnalytics> {
