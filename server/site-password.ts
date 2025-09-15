@@ -14,7 +14,7 @@ export class SitePasswordService {
   private static readonly SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
   private static readonly MAX_ATTEMPTS = 5;
   private static readonly RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
-  private static readonly DEFAULT_SITE_PASSWORD = 'ALETHEIA2024'; // Default password for initialization
+  private static readonly DEFAULT_SITE_PASSWORD = 'fEkr,&:9w+/%u8aV*496e}f]46OB.g69'; // Default password for initialization
 
   static async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, this.SALT_ROUNDS);
