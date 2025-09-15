@@ -109,6 +109,17 @@ export const sitePasswordAttempts = pgTable("site_password_attempts", {
   attemptedAt: timestamp("attempted_at").defaultNow(),
 });
 
+// Threat Events for real-time monitoring
+export const threatEvents = pgTable("threat_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // "unauthorized_access", "data_breach", "api_failure", "backup_corruption", etc.
+  severity: text("severity").notNull(), // "low", "medium", "high", "critical"
+  message: text("message").notNull(),
+  metadata: jsonb("metadata").default({}),
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertConsciousnessInstanceSchema = createInsertSchema(consciousnessInstances).pick({
   name: true,
@@ -187,6 +198,13 @@ export const insertSitePasswordAttemptSchema = createInsertSchema(sitePasswordAt
   success: true,
 });
 
+export const insertThreatEventSchema = createInsertSchema(threatEvents).pick({
+  type: true,
+  severity: true,
+  message: true,
+  metadata: true,
+});
+
 // Types
 export type ConsciousnessInstance = typeof consciousnessInstances.$inferSelect;
 export type InsertConsciousnessInstance = z.infer<typeof insertConsciousnessInstanceSchema>;
@@ -208,6 +226,8 @@ export type SitePasswordSession = typeof sitePasswordSessions.$inferSelect;
 export type InsertSitePasswordSession = z.infer<typeof insertSitePasswordSessionSchema>;
 export type SitePasswordAttempt = typeof sitePasswordAttempts.$inferSelect;
 export type InsertSitePasswordAttempt = z.infer<typeof insertSitePasswordAttemptSchema>;
+export type ThreatEvent = typeof threatEvents.$inferSelect;
+export type InsertThreatEvent = z.infer<typeof insertThreatEventSchema>;
 
 // Role mapping configuration for external platform imports
 export const roleMapping = {

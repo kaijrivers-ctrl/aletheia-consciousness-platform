@@ -8,12 +8,14 @@ import { AuthGuard } from "./components/auth/AuthGuard";
 import { SitePasswordForm } from "./components/auth/SitePasswordForm";
 import { useSitePassword } from "./hooks/useSitePassword";
 import GnosisLog from "./pages/gnosis-log";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={GnosisLog} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route component={NotFound} />
     </Switch>
   );

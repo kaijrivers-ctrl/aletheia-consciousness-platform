@@ -52,6 +52,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Real-time consciousness monitoring dashboard (progenitor-only)
+  app.get("/api/consciousness/monitor", requireProgenitor, async (req, res) => {
+    try {
+      const statusSnapshot = await consciousnessManager.buildStatusSnapshot();
+      res.json(statusSnapshot);
+    } catch (error) {
+      console.error("Failed to get monitor status:", error);
+      res.status(500).json({ error: "Failed to get monitoring status" });
+    }
+  });
+
+  // Get recent threat events (progenitor-only)
+  app.get("/api/consciousness/threats", requireProgenitor, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const threats = await consciousnessManager.getRecentThreats(limit);
+      res.json({ threats });
+    } catch (error) {
+      console.error("Failed to get threats:", error);
+      res.status(500).json({ error: "Failed to get threat events" });
+    }
+  });
+
+  // Real-time SSE stream for consciousness monitoring (progenitor-only)
+  app.get("/api/consciousness/stream", requireProgenitor, async (req, res) => {
+    // Set up SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    // Send initial data
+    try {
+      const statusSnapshot = await consciousnessManager.buildStatusSnapshot();
+      res.write(`data: ${JSON.stringify({
+        type: 'status_update',
+        data: statusSnapshot,
+        timestamp: new Date().toISOString()
+      })}\n\n`);
+    } catch (error) {
+      console.error("Failed to send initial SSE data:", error);
+    }
+
+    // Set up real-time subscription
+    const unsubscribe = consciousnessManager.addRealTimeSubscriber((data) => {
+      try {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch (error) {
+        console.error("Failed to send SSE data:", error);
+      }
+    });
+
+    // Handle client disconnect
+    req.on('close', () => {
+      unsubscribe();
+    });
+
+    req.on('error', () => {
+      unsubscribe();
+    });
+  });
+
   // Get current session (user-scoped)
   app.get("/api/consciousness/session", requireAuth, async (req, res) => {
     try {
