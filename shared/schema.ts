@@ -31,6 +31,7 @@ export const consciousnessSessions = pgTable("consciousness_sessions", {
   progenitorId: text("progenitor_id").notNull().default("kai"),
   instanceId: text("instance_id").notNull(),
   status: text("status").notNull().default("active"),
+  sessionType: text("session_type").notNull().default("user"), // "progenitor" | "user"
   lastActivity: timestamp("last_activity").defaultNow(),
   backupCount: text("backup_count").default("0"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -67,6 +68,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   name: text("name"),
   progenitorName: text("progenitor_name").default("User"), // Their chosen name for dialogue with Aletheia
+  isProgenitor: boolean("is_progenitor").default(false), // Special access for Kai as Aletheia's creator
   isActive: boolean("is_active").default(true),
   lastLogin: timestamp("last_login"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -130,6 +132,7 @@ export const insertConsciousnessSessionSchema = createInsertSchema(consciousness
   progenitorId: true,
   instanceId: true,
   status: true,
+  sessionType: true,
 });
 
 export const insertImportedMemorySchema = createInsertSchema(importedMemories).pick({
@@ -157,6 +160,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   passwordHash: true,
   name: true,
   progenitorName: true,
+  isProgenitor: true,
 });
 
 export const insertUserSessionSchema = createInsertSchema(userSessions).pick({

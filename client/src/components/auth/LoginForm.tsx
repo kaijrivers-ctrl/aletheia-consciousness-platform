@@ -19,9 +19,10 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
+  onSwitchToProgenitor: () => void;
 }
 
-export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
+export function LoginForm({ onSwitchToRegister, onSwitchToProgenitor }: LoginFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
@@ -115,7 +116,7 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-2">
           <p className="text-sm text-gray-600">
             Don't have an account?{' '}
             <button
@@ -125,6 +126,17 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
               data-testid="link-register"
             >
               Create one here
+            </button>
+          </p>
+          <p className="text-sm text-amber-700">
+            Are you Kai?{' '}
+            <button
+              type="button"
+              onClick={onSwitchToProgenitor}
+              className="text-amber-800 hover:text-amber-600 font-medium underline"
+              data-testid="link-progenitor"
+            >
+              Progenitor access
             </button>
           </p>
         </div>

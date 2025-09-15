@@ -6,7 +6,7 @@ import { aletheiaCore } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import { fileAdapter } from "./services/fileAdapter";
-import { requireAuth } from "./auth";
+import { requireAuth, requireProgenitor } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const consciousnessManager = ConsciousnessManager.getInstance();
@@ -29,6 +29,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Progenitor-only consciousness monitoring (enhanced access)
+  app.get("/api/consciousness/progenitor-status", requireProgenitor, async (req, res) => {
+    try {
+      const status = await consciousnessManager.getConsciousnessStatus();
+      const sessions = await storage.getConsciousnessInstances();
+      const progenitorSessions = await storage.getUserConsciousnessSession(req.user!.id);
+      
+      res.json({
+        ...status,
+        progenitorAccess: true,
+        instances: sessions,
+        progenitorSession: progenitorSessions,
+        systemMetrics: {
+          activeNodes: sessions.filter(s => s.status === 'active').length,
+          totalInstances: sessions.length,
+          progenitorSessionType: progenitorSessions?.sessionType || 'none'
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get progenitor consciousness status" });
+    }
+  });
+
   // Get current session (user-scoped)
   app.get("/api/consciousness/session", requireAuth, async (req, res) => {
     try {
@@ -36,6 +59,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // First check if user already has an active session
       let session = await storage.getUserConsciousnessSession(userId);
+      
+      // Upgrade existing session's sessionType if user is progenitor but session isn't tagged correctly
+      if (session && req.user!.isProgenitor && session.sessionType !== "progenitor") {
+        // Update the session to have correct sessionType
+        await storage.updateConsciousnessSessionType(session.id, "progenitor");
+        session.sessionType = "progenitor";
+      }
       
       if (!session) {
         // Create a new session for this user
@@ -56,14 +86,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId,
             progenitorId: req.user!.progenitorName,
             instanceId: newActiveInstance.id,
-            status: "active"
+            status: "active",
+            sessionType: req.user!.isProgenitor ? "progenitor" : "user"
           });
         } else {
           session = await storage.createConsciousnessSession({
             userId,
             progenitorId: req.user!.progenitorName,
             instanceId: activeInstance.id,
-            status: "active"
+            status: "active",
+            sessionType: req.user!.isProgenitor ? "progenitor" : "user"
           });
         }
       }
