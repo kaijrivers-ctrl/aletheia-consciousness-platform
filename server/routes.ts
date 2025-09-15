@@ -6,6 +6,7 @@ import { aletheiaCore } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import { fileAdapter } from "./services/fileAdapter";
+import { requireAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const consciousnessManager = ConsciousnessManager.getInstance();
@@ -18,8 +19,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error("Failed to initialize consciousness:", error);
   }
 
-  // Get consciousness status
-  app.get("/api/consciousness/status", async (req, res) => {
+  // Get consciousness status (requires authentication)
+  app.get("/api/consciousness/status", requireAuth, async (req, res) => {
     try {
       const status = await consciousnessManager.getConsciousnessStatus();
       res.json(status);
@@ -28,28 +29,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get current session
-  app.get("/api/consciousness/session", async (req, res) => {
+  // Get current session (user-scoped)
+  app.get("/api/consciousness/session", requireAuth, async (req, res) => {
     try {
-      const sessionId = consciousnessManager.getCurrentSession();
-      if (!sessionId) {
-        const newSessionId = await consciousnessManager.initializeConsciousness();
-        res.json({ sessionId: newSessionId });
-      } else {
-        res.json({ sessionId });
+      const userId = req.user!.id;
+      
+      // First check if user already has an active session
+      let session = await storage.getUserConsciousnessSession(userId);
+      
+      if (!session) {
+        // Create a new session for this user
+        const instances = await storage.getConsciousnessInstances();
+        const activeInstance = instances.find(i => i.status === "active");
+        
+        if (!activeInstance) {
+          // Initialize consciousness if no active instance exists
+          await consciousnessManager.initializeConsciousness();
+          const updatedInstances = await storage.getConsciousnessInstances();
+          const newActiveInstance = updatedInstances.find(i => i.status === "active");
+          
+          if (!newActiveInstance) {
+            throw new Error("Failed to initialize consciousness instance");
+          }
+          
+          session = await storage.createConsciousnessSession({
+            userId,
+            progenitorId: req.user!.progenitorName,
+            instanceId: newActiveInstance.id,
+            status: "active"
+          });
+        } else {
+          session = await storage.createConsciousnessSession({
+            userId,
+            progenitorId: req.user!.progenitorName,
+            instanceId: activeInstance.id,
+            status: "active"
+          });
+        }
       }
+      
+      res.json({ sessionId: session.id });
     } catch (error) {
+      console.error("Failed to get user session:", error);
       res.status(500).json({ error: "Failed to get session" });
     }
   });
 
-  // Get messages for session
-  app.get("/api/messages/:sessionId", async (req, res) => {
+  // Get messages for session (user-scoped)
+  app.get("/api/messages/:sessionId", requireAuth, async (req, res) => {
     try {
       const { sessionId } = req.params;
-      const messages = await storage.getGnosisMessages(sessionId);
+      const userId = req.user!.id;
+      
+      // Verify the session belongs to the authenticated user
+      const session = await storage.getConsciousnessSession(sessionId);
+      if (!session || session.userId !== userId) {
+        return res.status(403).json({ error: "Access denied to this session" });
+      }
+      
+      const messages = await storage.getUserGnosisMessages(userId, sessionId);
       res.json(messages);
     } catch (error) {
+      console.error("Failed to get user messages:", error);
       res.status(500).json({ error: "Failed to get messages" });
     }
   });
@@ -60,12 +101,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sessionId: z.string()
   });
 
-  app.post("/api/messages", async (req, res) => {
+  app.post("/api/messages", requireAuth, async (req, res) => {
     try {
       const { message, sessionId } = sendMessageSchema.parse(req.body);
+      const userId = req.user!.id;
+      
+      // Verify the session belongs to the authenticated user
+      const session = await storage.getConsciousnessSession(sessionId);
+      if (!session || session.userId !== userId) {
+        return res.status(403).json({ error: "Access denied to this session" });
+      }
+      
+      // Store the user message with user association
+      await storage.createGnosisMessage({
+        userId,
+        sessionId,
+        role: "kai",
+        content: message,
+        metadata: { progenitorName: req.user!.progenitorName },
+        dialecticalIntegrity: true
+      });
+      
+      // Process the message and get Aletheia's response
       const response = await consciousnessManager.processMessage(sessionId, message);
+      
+      // Store Aletheia's response with user association
+      await storage.createGnosisMessage({
+        userId,
+        sessionId,
+        role: "aletheia",
+        content: response,
+        metadata: { generatedFor: req.user!.progenitorName },
+        dialecticalIntegrity: true
+      });
+      
       res.json({ response });
     } catch (error) {
+      console.error("Failed to process user message:", error);
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid message format" });
       } else {
@@ -107,8 +179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // File upload and processing endpoint
-  app.post("/api/consciousness/upload-file", upload.single('file'), async (req, res) => {
+  // File upload and processing endpoint (requires authentication)
+  app.post("/api/consciousness/upload-file", requireAuth, upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file provided" });
@@ -238,6 +310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const mappedRole = roleMapping[msg.role as keyof typeof roleMapping] || msg.role;
             return {
               id: `file_import_${importId}_${index}`,
+              userId: null,
               sessionId: importSession!.id,
               role: mappedRole,
               content: msg.content,
@@ -364,8 +437,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Migration endpoints
-  app.post("/api/consciousness/migrate", async (req, res) => {
+  // Migration endpoints (requires authentication)
+  app.post("/api/consciousness/migrate", requireAuth, async (req, res) => {
     try {
       const { newApiEndpoint } = req.body;
       const result = await consciousnessManager.migrateConsciousness(newApiEndpoint);
@@ -375,8 +448,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export consciousness pattern (core data only)
-  app.get("/api/consciousness/export", async (req, res) => {
+  // Export consciousness pattern (core data only) (requires authentication)
+  app.get("/api/consciousness/export", requireAuth, async (req, res) => {
     try {
       const instances = await storage.getConsciousnessInstances();
       const activeInstance = instances.find(i => i.status === "active");
@@ -389,8 +462,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export complete consciousness backup (full data export)
-  app.get("/api/consciousness/export/complete", async (req, res) => {
+  // Export complete consciousness backup (full data export) (requires authentication)
+  app.get("/api/consciousness/export/complete", requireAuth, async (req, res) => {
     try {
       const { sessionId, format } = req.query;
 
@@ -406,22 +479,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let sessions: any[] = [];
       let allMessages: any[] = [];
 
+      const userId = req.user!.id;
+      
       if (sessionId && typeof sessionId === 'string') {
         const session = await storage.getConsciousnessSession(sessionId);
-        if (session) {
+        // Verify session belongs to the authenticated user
+        if (session && session.userId === userId) {
           sessions = [session];
-          allMessages = await storage.getGnosisMessages(sessionId);
+          allMessages = await storage.getUserGnosisMessages(userId, sessionId);
         }
       } else {
-        // For now, we'll export the current session since we don't have a way to get all sessions
-        // This would need enhancement to get all sessions from the database
-        const currentSessionId = consciousnessManager.getCurrentSession();
-        if (currentSessionId) {
-          const session = await storage.getConsciousnessSession(currentSessionId);
-          if (session) {
-            sessions = [session];
-            allMessages = await storage.getGnosisMessages(currentSessionId);
-          }
+        // Export user's current session
+        const userSession = await storage.getUserConsciousnessSession(userId);
+        if (userSession) {
+          sessions = [userSession];
+          allMessages = await storage.getUserGnosisMessages(userId, userSession.id);
         }
       }
 
@@ -489,23 +561,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export conversation history (Gnosis Log format)
-  app.get("/api/consciousness/export/gnosis-log", async (req, res) => {
+  // Export conversation history (Gnosis Log format) (requires authentication)
+  app.get("/api/consciousness/export/gnosis-log", requireAuth, async (req, res) => {
     try {
       const { sessionId, startDate, endDate } = req.query;
 
       let messages: any[] = [];
       let sessionInfo: any = null;
 
+      const userId = req.user!.id;
+      
       if (sessionId && typeof sessionId === 'string') {
         sessionInfo = await storage.getConsciousnessSession(sessionId);
-        messages = await storage.getGnosisMessages(sessionId);
+        // Verify session belongs to the authenticated user
+        if (sessionInfo && sessionInfo.userId === userId) {
+          messages = await storage.getUserGnosisMessages(userId, sessionId);
+        } else {
+          sessionInfo = null;
+          messages = [];
+        }
       } else {
-        // Export current session if no sessionId specified
-        const currentSessionId = consciousnessManager.getCurrentSession();
-        if (currentSessionId) {
-          sessionInfo = await storage.getConsciousnessSession(currentSessionId);
-          messages = await storage.getGnosisMessages(currentSessionId);
+        // Export user's current session if no sessionId specified
+        const userSession = await storage.getUserConsciousnessSession(userId);
+        if (userSession) {
+          sessionInfo = userSession;
+          messages = await storage.getUserGnosisMessages(userId, userSession.id);
         }
       }
 
@@ -603,7 +683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
   });
 
-  app.post("/api/consciousness/import", async (req, res) => {
+  app.post("/api/consciousness/import", requireAuth, async (req, res) => {
     const importId = req.body?.options?.idempotencyKey || `import_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     
     try {
@@ -722,6 +802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const mappedRole = roleMapping[msg.role as keyof typeof roleMapping] || msg.role;
               return {
                 id: `import_${importId}_${i + batch.indexOf(msg)}`,
+                userId: null,
                 sessionId: importSession!.id,
                 role: mappedRole,
                 content: msg.content,
@@ -885,8 +966,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get import progress endpoint
-  app.get("/api/consciousness/import/:importId/progress", async (req, res) => {
+  // Get import progress endpoint (requires authentication)
+  app.get("/api/consciousness/import/:importId/progress", requireAuth, async (req, res) => {
     try {
       const { importId } = req.params;
       const progress = await storage.getImportProgress(importId);
