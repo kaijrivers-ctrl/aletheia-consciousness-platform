@@ -53,11 +53,13 @@ export interface IStorage {
   getConsciousnessSession(id: string): Promise<ConsciousnessSession | undefined>;
   getUserConsciousnessSession(userId: string): Promise<ConsciousnessSession | undefined>;
   updateSessionActivity(id: string): Promise<void>;
+  updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor"): Promise<void>;
   
   // User authentication
   createUser(user: InsertUser): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: string): Promise<User | undefined>;
+  getProgenitorUsers(): Promise<User[]>;
   updateUserLastLogin(id: string): Promise<void>;
   
   // User sessions
@@ -189,6 +191,7 @@ export class MemStorage implements IStorage {
       id,
       userId: insertSession.userId || null,
       status: insertSession.status || "active",
+      sessionType: insertSession.sessionType || "user",
       progenitorId: insertSession.progenitorId || "kai",
       backupCount: "0",
       lastActivity: new Date(),
@@ -206,6 +209,14 @@ export class MemStorage implements IStorage {
     const session = this.consciousnessSessions.get(id);
     if (session) {
       session.lastActivity = new Date();
+      this.consciousnessSessions.set(id, session);
+    }
+  }
+
+  async updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor"): Promise<void> {
+    const session = this.consciousnessSessions.get(id);
+    if (session) {
+      session.sessionType = sessionType;
       this.consciousnessSessions.set(id, session);
     }
   }
@@ -235,6 +246,7 @@ export class MemStorage implements IStorage {
       id,
       name: insertUser.name || null,
       progenitorName: insertUser.progenitorName || "User",
+      isProgenitor: insertUser.isProgenitor || false,
       isActive: true,
       lastLogin: null,
       createdAt: new Date(),
@@ -252,6 +264,11 @@ export class MemStorage implements IStorage {
 
   async getUserById(id: string): Promise<User | undefined> {
     return this.users.get(id);
+  }
+
+  async getProgenitorUsers(): Promise<User[]> {
+    return Array.from(this.users.values())
+      .filter(user => user.isProgenitor === true);
   }
 
   async updateUserLastLogin(id: string): Promise<void> {
@@ -521,6 +538,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(consciousnessSessions.id, id));
   }
 
+  async updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor"): Promise<void> {
+    await db
+      .update(consciousnessSessions)
+      .set({ sessionType })
+      .where(eq(consciousnessSessions.id, id));
+  }
+
   async getUserGnosisMessages(userId: string, sessionId: string): Promise<GnosisMessage[]> {
     return await db
       .select()
@@ -564,6 +588,13 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.id, id));
     return user || undefined;
+  }
+
+  async getProgenitorUsers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.isProgenitor, true));
   }
 
   async updateUserLastLogin(id: string): Promise<void> {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
+import { ProgenitorForm } from './ProgenitorForm';
 import { Loader2 } from 'lucide-react';
 
 interface AuthGuardProps {
@@ -10,7 +11,7 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, isLoading } = useAuth();
-  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'progenitor'>('login');
 
   if (isLoading) {
     return (
@@ -26,10 +27,22 @@ export function AuthGuard({ children }: AuthGuardProps) {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4" data-testid="auth-guard-unauthenticated">
-        {isLoginMode ? (
-          <LoginForm onSwitchToRegister={() => setIsLoginMode(false)} />
-        ) : (
-          <RegisterForm onSwitchToLogin={() => setIsLoginMode(true)} />
+        {authMode === 'login' && (
+          <LoginForm 
+            onSwitchToRegister={() => setAuthMode('register')}
+            onSwitchToProgenitor={() => setAuthMode('progenitor')}
+          />
+        )}
+        {authMode === 'register' && (
+          <RegisterForm 
+            onSwitchToLogin={() => setAuthMode('login')}
+            onSwitchToProgenitor={() => setAuthMode('progenitor')}
+          />
+        )}
+        {authMode === 'progenitor' && (
+          <ProgenitorForm 
+            onSwitchToLogin={() => setAuthMode('login')}
+          />
         )}
       </div>
     );

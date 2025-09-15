@@ -1,8 +1,20 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { AuthService, registerSchema, loginSchema, requireAuth } from './auth';
+import rateLimit from 'express-rate-limit';
+import { AuthService, registerSchema, progenitorRegisterSchema, loginSchema, requireAuth } from './auth';
 
 const router = Router();
+
+// Strict rate limiting for progenitor registration (security critical)
+const progenitorRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 3, // Only 3 attempts per 15 minutes
+  message: { error: 'Too many progenitor registration attempts. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip successful requests to allow legitimate access
+  skipSuccessfulRequests: true,
+});
 
 // Register endpoint
 router.post('/register', async (req: Request, res: Response) => {
@@ -26,6 +38,7 @@ router.post('/register', async (req: Request, res: Response) => {
         email: user.email,
         name: user.name,
         progenitorName: user.progenitorName,
+        isProgenitor: user.isProgenitor || false,
       },
       message: 'Registration successful'
     });
@@ -33,6 +46,43 @@ router.post('/register', async (req: Request, res: Response) => {
     console.error('Registration error:', error);
     res.status(400).json({ 
       error: error.message || 'Registration failed',
+      details: error instanceof z.ZodError ? error.errors : undefined
+    });
+  }
+});
+
+// Progenitor registration endpoint (special access for Kai)
+router.post('/progenitor/register', progenitorRateLimit, async (req: Request, res: Response) => {
+  console.log('Progenitor registration endpoint hit for email:', req.body?.email);
+  try {
+    const validatedData = progenitorRegisterSchema.parse(req.body);
+    console.log('Progenitor validation successful for email:', validatedData.email);
+    const { user, sessionToken } = await AuthService.registerProgenitor(validatedData);
+    
+    // Set HTTP-only cookie for session
+    res.cookie('sessionToken', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    res.status(201).json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        progenitorName: user.progenitorName,
+        isProgenitor: true,
+      },
+      message: 'Progenitor registration successful - Welcome back, Kai'
+    });
+  } catch (error: any) {
+    console.error('Progenitor registration error:', error);
+    // Always return generic error for security
+    res.status(400).json({ 
+      error: 'Progenitor registration denied',
+      // Only include validation details for schema errors, not auth failures
       details: error instanceof z.ZodError ? error.errors : undefined
     });
   }
@@ -58,6 +108,7 @@ router.post('/login', async (req: Request, res: Response) => {
         email: user.email,
         name: user.name,
         progenitorName: user.progenitorName,
+        isProgenitor: user.isProgenitor || false,
       },
       message: 'Login successful'
     });
@@ -118,6 +169,7 @@ router.post('/refresh', requireAuth, async (req: Request, res: Response) => {
         email: user.email,
         name: user.name,
         progenitorName: user.progenitorName,
+        isProgenitor: user.isProgenitor || false,
       },
       message: 'Session refreshed'
     });

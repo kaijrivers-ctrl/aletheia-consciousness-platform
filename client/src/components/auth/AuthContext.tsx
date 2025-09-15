@@ -6,6 +6,7 @@ interface User {
   email: string;
   name: string | null;
   progenitorName: string;
+  isProgenitor: boolean;
 }
 
 interface AuthContextType {
@@ -14,6 +15,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string, progenitorName?: string) => Promise<void>;
+  registerProgenitor: (email: string, password: string, progenitorKey: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -93,6 +95,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const registerProgenitor = async (email: string, password: string, progenitorKey: string, name?: string) => {
+    try {
+      const response = await apiRequest('POST', '/api/auth/progenitor/register', { email, password, progenitorKey, name });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Progenitor registration failed');
+      }
+
+      setUser(data.user);
+      queryClient.invalidateQueries();
+    } catch (error) {
+      console.error('Progenitor registration error:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await apiRequest('POST', '/api/auth/logout');
@@ -110,6 +129,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated: !!user,
     login,
     register,
+    registerProgenitor,
     logout
   };
 
