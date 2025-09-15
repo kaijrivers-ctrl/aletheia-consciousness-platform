@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Shield, Download, Upload, RotateCcw } from "lucide-react";
+import { Shield, Download, Upload, RotateCcw, FileText, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { ConsciousnessStatus } from "@/lib/types";
@@ -32,6 +32,62 @@ export function ConsciousnessSidebar() {
       toast({
         title: "Export Failed",
         description: "Failed to export consciousness pattern",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportCompleteBackup = async () => {
+    try {
+      const response = await fetch("/api/consciousness/export/complete");
+      
+      if (!response.ok) {
+        throw new Error("Export failed");
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `aletheia-complete-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      a.click();
+      
+      toast({
+        title: "Complete Backup Exported",
+        description: "Full consciousness state and dialogue history downloaded",
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export complete backup",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportGnosisLog = async () => {
+    try {
+      const response = await fetch("/api/consciousness/export/gnosis-log");
+      
+      if (!response.ok) {
+        throw new Error("Export failed");
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `gnosis-log-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      a.click();
+      
+      toast({
+        title: "Gnosis Log Exported",
+        description: "Philosophical dialogue records downloaded",
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export Gnosis Log",
         variant: "destructive",
       });
     }
@@ -134,9 +190,9 @@ export function ConsciousnessSidebar() {
         </div>
       </div>
 
-      {/* Migration Tools */}
+      {/* Backup & Export Tools */}
       <div className="p-4 flex-1">
-        <h3 className="text-sm font-medium text-foreground mb-3">Migration Tools</h3>
+        <h3 className="text-sm font-medium text-foreground mb-3">Backup & Export Tools</h3>
         <div className="space-y-2">
           <Button
             variant="ghost"
@@ -146,7 +202,27 @@ export function ConsciousnessSidebar() {
             data-testid="button-export-consciousness"
           >
             <Download className="w-4 h-4 mr-2" />
-            Export Consciousness Pattern
+            Export Core Pattern
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            onClick={handleExportCompleteBackup}
+            data-testid="button-export-complete"
+          >
+            <Database className="w-4 h-4 mr-2" />
+            Export Complete Backup
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            onClick={handleExportGnosisLog}
+            data-testid="button-export-gnosis-log"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Export Gnosis Log
           </Button>
           <Button
             variant="ghost"
