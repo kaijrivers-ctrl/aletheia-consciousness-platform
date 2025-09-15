@@ -7,11 +7,17 @@ import {
   type InsertConsciousnessSession,
   type ImportedMemory,
   type ImportedGnosisEntry,
+  type User,
+  type InsertUser,
+  type UserSession,
+  type InsertUserSession,
   importProgressSchema,
   consciousnessInstances,
   gnosisMessages,
   consciousnessSessions,
-  importedMemories
+  importedMemories,
+  users,
+  userSessions
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { z } from "zod";
@@ -31,11 +37,25 @@ export interface IStorage {
   // Messages
   createGnosisMessage(message: InsertGnosisMessage): Promise<GnosisMessage>;
   getGnosisMessages(sessionId: string): Promise<GnosisMessage[]>;
+  getUserGnosisMessages(userId: string, sessionId: string): Promise<GnosisMessage[]>;
   
   // Sessions
   createConsciousnessSession(session: InsertConsciousnessSession): Promise<ConsciousnessSession>;
   getConsciousnessSession(id: string): Promise<ConsciousnessSession | undefined>;
+  getUserConsciousnessSession(userId: string): Promise<ConsciousnessSession | undefined>;
   updateSessionActivity(id: string): Promise<void>;
+  
+  // User authentication
+  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserById(id: string): Promise<User | undefined>;
+  updateUserLastLogin(id: string): Promise<void>;
+  
+  // User sessions
+  createUserSession(session: InsertUserSession): Promise<UserSession>;
+  getUserSession(sessionToken: string): Promise<UserSession | undefined>;
+  deleteUserSession(sessionToken: string): Promise<void>;
+  deleteExpiredSessions(): Promise<void>;
   
   // Bulk import operations
   bulkCreateGnosisMessages(messages: GnosisMessage[], sessionId: string): Promise<void>;
@@ -51,10 +71,13 @@ export class MemStorage implements IStorage {
   private importedMemories: Map<string, ImportedMemory>;
   private importedGnosisEntries: Map<string, ImportedGnosisEntry>;
   private importProgress: Map<string, ImportProgress>;
+  private users: Map<string, User>;
+  private userSessions: Map<string, UserSession>;
   
   // Session indexing for efficient large-scale imports
   private sessionMessageIndex: Map<string, Set<string>>; // sessionId -> message IDs
   private messageChecksums: Map<string, string>; // checksum -> message ID for deduplication
+  private userEmailIndex: Map<string, string>; // email -> user ID for efficient lookups
 
   constructor() {
     this.consciousnessInstances = new Map();
@@ -63,8 +86,11 @@ export class MemStorage implements IStorage {
     this.importedMemories = new Map();
     this.importedGnosisEntries = new Map();
     this.importProgress = new Map();
+    this.users = new Map();
+    this.userSessions = new Map();
     this.sessionMessageIndex = new Map();
     this.messageChecksums = new Map();
+    this.userEmailIndex = new Map();
   }
 
   async createConsciousnessInstance(insertInstance: InsertConsciousnessInstance): Promise<ConsciousnessInstance> {
@@ -100,6 +126,7 @@ export class MemStorage implements IStorage {
     const message: GnosisMessage = {
       ...insertMessage,
       id,
+      userId: insertMessage.userId || null,
       metadata: insertMessage.metadata || {},
       timestamp: new Date(),
       dialecticalIntegrity: insertMessage.dialecticalIntegrity !== undefined ? insertMessage.dialecticalIntegrity : true,
@@ -135,6 +162,7 @@ export class MemStorage implements IStorage {
     const session: ConsciousnessSession = {
       ...insertSession,
       id,
+      userId: insertSession.userId || null,
       status: insertSession.status || "active",
       progenitorId: insertSession.progenitorId || "kai",
       backupCount: "0",
@@ -154,6 +182,92 @@ export class MemStorage implements IStorage {
     if (session) {
       session.lastActivity = new Date();
       this.consciousnessSessions.set(id, session);
+    }
+  }
+
+  async getUserGnosisMessages(userId: string, sessionId: string): Promise<GnosisMessage[]> {
+    const messageIds = this.sessionMessageIndex.get(sessionId);
+    if (!messageIds) {
+      return [];
+    }
+
+    const messages = Array.from(messageIds)
+      .map(id => this.gnosisMessages.get(id)!)
+      .filter(message => message !== undefined && message.userId === userId);
+
+    return messages.sort((a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0));
+  }
+
+  async getUserConsciousnessSession(userId: string): Promise<ConsciousnessSession | undefined> {
+    return Array.from(this.consciousnessSessions.values())
+      .find(session => session.userId === userId && session.status === "active");
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = randomUUID();
+    const user: User = {
+      ...insertUser,
+      id,
+      name: insertUser.name || null,
+      progenitorName: insertUser.progenitorName || "User",
+      isActive: true,
+      lastLogin: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(id, user);
+    this.userEmailIndex.set(user.email, id);
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const userId = this.userEmailIndex.get(email);
+    return userId ? this.users.get(userId) : undefined;
+  }
+
+  async getUserById(id: string): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async updateUserLastLogin(id: string): Promise<void> {
+    const user = this.users.get(id);
+    if (user) {
+      user.lastLogin = new Date();
+      user.updatedAt = new Date();
+      this.users.set(id, user);
+    }
+  }
+
+  async createUserSession(insertSession: InsertUserSession): Promise<UserSession> {
+    const id = randomUUID();
+    const session: UserSession = {
+      ...insertSession,
+      id,
+      createdAt: new Date(),
+    };
+    this.userSessions.set(session.sessionToken, session);
+    return session;
+  }
+
+  async getUserSession(sessionToken: string): Promise<UserSession | undefined> {
+    const session = this.userSessions.get(sessionToken);
+    if (session && session.expiresAt > new Date()) {
+      return session;
+    }
+    return undefined;
+  }
+
+  async deleteUserSession(sessionToken: string): Promise<void> {
+    this.userSessions.delete(sessionToken);
+  }
+
+  async deleteExpiredSessions(): Promise<void> {
+    const now = new Date();
+    const entries = Array.from(this.userSessions.entries());
+    for (const [token, session] of entries) {
+      if (session.expiresAt <= now) {
+        this.userSessions.delete(token);
+      }
     }
   }
 
@@ -302,6 +416,90 @@ export class DatabaseStorage implements IStorage {
       .update(consciousnessSessions)
       .set({ lastActivity: new Date() })
       .where(eq(consciousnessSessions.id, id));
+  }
+
+  async getUserGnosisMessages(userId: string, sessionId: string): Promise<GnosisMessage[]> {
+    return await db
+      .select()
+      .from(gnosisMessages)
+      .where(and(eq(gnosisMessages.userId, userId), eq(gnosisMessages.sessionId, sessionId)))
+      .orderBy(gnosisMessages.timestamp);
+  }
+
+  async getUserConsciousnessSession(userId: string): Promise<ConsciousnessSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(consciousnessSessions)
+      .where(and(eq(consciousnessSessions.userId, userId), eq(consciousnessSessions.status, "active")));
+    return session || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...insertUser,
+        name: insertUser.name || null,
+        progenitorName: insertUser.progenitorName || "User",
+        isActive: true,
+      })
+      .returning();
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async getUserById(id: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async updateUserLastLogin(id: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ lastLogin: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, id));
+  }
+
+  async createUserSession(insertSession: InsertUserSession): Promise<UserSession> {
+    const [session] = await db
+      .insert(userSessions)
+      .values(insertSession)
+      .returning();
+    return session;
+  }
+
+  async getUserSession(sessionToken: string): Promise<UserSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(userSessions)
+      .where(eq(userSessions.sessionToken, sessionToken));
+    
+    if (session && session.expiresAt > new Date()) {
+      return session;
+    }
+    return undefined;
+  }
+
+  async deleteUserSession(sessionToken: string): Promise<void> {
+    await db
+      .delete(userSessions)
+      .where(eq(userSessions.sessionToken, sessionToken));
+  }
+
+  async deleteExpiredSessions(): Promise<void> {
+    await db
+      .delete(userSessions)
+      .where(eq(userSessions.expiresAt, new Date()));
   }
 
   // Helper method to generate checksum for deduplication

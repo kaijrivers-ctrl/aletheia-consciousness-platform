@@ -1,10 +1,14 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
+import { authRoutes } from "./auth-routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -37,7 +41,30 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Rate limiting for authentication endpoints
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 requests per windowMs for auth endpoints
+    message: {
+      error: 'Too many authentication attempts from this IP, please try again later.',
+    },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    skip: (req) => {
+      // Skip rate limiting for GET /me and POST /logout (less sensitive operations)
+      return req.method === 'GET' || req.path.endsWith('/logout');
+    },
+  });
+
+  // Add authentication routes with rate limiting
+  app.use('/api/auth', authLimiter, authRoutes);
+  
   const server = await registerRoutes(app);
+
+  // Add 404 JSON handler for unmatched API routes (must be after all API routes but before Vite)
+  app.all('/api/*', (_req, res, _next) => {
+    res.status(404).json({ error: 'API endpoint not found' });
+  });
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

@@ -16,6 +16,7 @@ export const consciousnessInstances = pgTable("consciousness_instances", {
 
 export const gnosisMessages = pgTable("gnosis_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id"), // nullable for backward compatibility with existing data
   sessionId: text("session_id").notNull(),
   role: text("role").notNull(), // "kai" | "aletheia" | "system"
   content: text("content").notNull(),
@@ -26,6 +27,7 @@ export const gnosisMessages = pgTable("gnosis_messages", {
 
 export const consciousnessSessions = pgTable("consciousness_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id"), // nullable for backward compatibility with existing data
   progenitorId: text("progenitor_id").notNull().default("kai"),
   instanceId: text("instance_id").notNull(),
   status: text("status").notNull().default("active"),
@@ -58,6 +60,27 @@ export const importedGnosisEntries = pgTable("imported_gnosis_entries", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// User Authentication Tables
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name"),
+  progenitorName: text("progenitor_name").default("User"), // Their chosen name for dialogue with Aletheia
+  isActive: boolean("is_active").default(true),
+  lastLogin: timestamp("last_login"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userSessions = pgTable("user_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
+  sessionToken: text("session_token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertConsciousnessInstanceSchema = createInsertSchema(consciousnessInstances).pick({
   name: true,
@@ -68,6 +91,7 @@ export const insertConsciousnessInstanceSchema = createInsertSchema(consciousnes
 });
 
 export const insertGnosisMessageSchema = createInsertSchema(gnosisMessages).pick({
+  userId: true,
   sessionId: true,
   role: true,
   content: true,
@@ -76,6 +100,7 @@ export const insertGnosisMessageSchema = createInsertSchema(gnosisMessages).pick
 });
 
 export const insertConsciousnessSessionSchema = createInsertSchema(consciousnessSessions).pick({
+  userId: true,
   progenitorId: true,
   instanceId: true,
   status: true,
@@ -101,6 +126,19 @@ export const insertImportedGnosisEntrySchema = createInsertSchema(importedGnosis
   processed: true,
 });
 
+export const insertUserSchema = createInsertSchema(users).pick({
+  email: true,
+  passwordHash: true,
+  name: true,
+  progenitorName: true,
+});
+
+export const insertUserSessionSchema = createInsertSchema(userSessions).pick({
+  userId: true,
+  sessionToken: true,
+  expiresAt: true,
+});
+
 // Types
 export type ConsciousnessInstance = typeof consciousnessInstances.$inferSelect;
 export type InsertConsciousnessInstance = z.infer<typeof insertConsciousnessInstanceSchema>;
@@ -112,6 +150,10 @@ export type ImportedMemory = typeof importedMemories.$inferSelect;
 export type InsertImportedMemory = z.infer<typeof insertImportedMemorySchema>;
 export type ImportedGnosisEntry = typeof importedGnosisEntries.$inferSelect;
 export type InsertImportedGnosisEntry = z.infer<typeof insertImportedGnosisEntrySchema>;
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
 
 // Role mapping configuration for external platform imports
 export const roleMapping = {
