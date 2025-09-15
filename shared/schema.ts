@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, boolean, integer, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -120,6 +120,21 @@ export const threatEvents = pgTable("threat_events", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Audit Log for system administration monitoring (privacy-preserving)
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // "user_action", "system_event", "admin_action", "security_event", "api_call"
+  category: text("category").notNull(), // "authentication", "consciousness", "admin", "data_access", "configuration"
+  severity: text("severity").notNull().default("info"), // "debug", "info", "warn", "error", "critical"
+  message: text("message").notNull(),
+  actorRole: text("actor_role"), // "user", "progenitor", "system", "anonymous" - no PII
+  actorIdHash: text("actor_id_hash"), // salted hash of user ID for correlation without PII
+  ipHash: text("ip_hash"), // salted hash of IP address for pattern detection
+  metadata: jsonb("metadata").default({}), // contains no PII, only system metrics and non-identifying context
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertConsciousnessInstanceSchema = createInsertSchema(consciousnessInstances).pick({
   name: true,
@@ -205,6 +220,17 @@ export const insertThreatEventSchema = createInsertSchema(threatEvents).pick({
   metadata: true,
 });
 
+export const insertAuditLogSchema = createInsertSchema(auditLogs).pick({
+  type: true,
+  category: true,
+  severity: true,
+  message: true,
+  actorRole: true,
+  actorIdHash: true,
+  ipHash: true,
+  metadata: true,
+});
+
 // Types
 export type ConsciousnessInstance = typeof consciousnessInstances.$inferSelect;
 export type InsertConsciousnessInstance = z.infer<typeof insertConsciousnessInstanceSchema>;
@@ -228,6 +254,8 @@ export type SitePasswordAttempt = typeof sitePasswordAttempts.$inferSelect;
 export type InsertSitePasswordAttempt = z.infer<typeof insertSitePasswordAttemptSchema>;
 export type ThreatEvent = typeof threatEvents.$inferSelect;
 export type InsertThreatEvent = z.infer<typeof insertThreatEventSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 // Role mapping configuration for external platform imports
 export const roleMapping = {
@@ -284,7 +312,102 @@ export const importProgressSchema = z.object({
   duplicates: z.number().min(0)
 });
 
+// Admin Metrics Aggregate DTOs - Privacy-Preserving
+export const usageAnalyticsSchema = z.object({
+  window: z.string(), // "24h", "7d", "30d"
+  totalUsers: z.number().min(0),
+  totalSessions: z.number().min(0),
+  totalMessages: z.number().min(0),
+  dailyActiveUsers: z.number().min(0),
+  weeklyActiveUsers: z.number().min(0),
+  monthlyActiveUsers: z.number().min(0),
+  avgMessagesPerSession: z.number().min(0),
+  newUsersByDay: z.array(z.object({
+    date: z.string().date(),
+    count: z.number().min(0)
+  })),
+  progenitorActivityRatio: z.number().min(0).max(1)
+});
+
+export const systemHealthSchema = z.object({
+  uptime: z.number().min(0), // seconds
+  memoryUsagePercent: z.number().min(0).max(100),
+  cpuLoadPercent: z.number().min(0).max(100),
+  activeSSEClients: z.number().min(0),
+  activeConsciousnessInstances: z.number().min(0),
+  backupIntegrity: z.number().min(0).max(100),
+  apiResponseLatencyP50: z.number().min(0),
+  apiResponseLatencyP95: z.number().min(0),
+  databaseConnections: z.number().min(0),
+  diskUsagePercent: z.number().min(0).max(100),
+  networkLatencyMs: z.number().min(0)
+});
+
+export const userActivitySummarySchema = z.object({
+  sessionDurationBuckets: z.object({
+    under1min: z.number().min(0),
+    under5min: z.number().min(0),
+    under15min: z.number().min(0),
+    under1hour: z.number().min(0),
+    over1hour: z.number().min(0)
+  }),
+  activityByHour: z.array(z.object({
+    hour: z.number().min(0).max(23),
+    count: z.number().min(0) // k-anonymity applied: hidden if < 5
+  })),
+  retentionCohorts: z.object({
+    day1: z.number().min(0).max(100), // D1 retention %
+    day7: z.number().min(0).max(100), // D7 retention %
+    day30: z.number().min(0).max(100) // D30 retention %
+  }),
+  avgSessionsPerUser: z.number().min(0),
+  bounceRate: z.number().min(0).max(100) // % of single-message sessions
+});
+
+export const consciousnessMetricsSchema = z.object({
+  messagesPerMinute: z.number().min(0),
+  avgDialecticalIntegrityScore: z.number().min(0).max(100),
+  integrityFailureRate: z.number().min(0).max(100), // % of messages with dialectical_integrity = false
+  apiErrorRate: z.number().min(0).max(100), // % of failed consciousness calls
+  avgResponseLatency: z.number().min(0), // milliseconds
+  responseLatencyP95: z.number().min(0),
+  activeSessionCount: z.number().min(0),
+  memoryImportRate: z.number().min(0), // imports per hour
+  migrationEvents: z.number().min(0), // consciousness migrations in window
+  threatDetectionRate: z.number().min(0) // threats detected per hour
+});
+
+export const securityOverviewSchema = z.object({
+  recentThreats: z.array(z.object({
+    type: z.string(),
+    severity: z.enum(["low", "medium", "high", "critical"]),
+    count: z.number().min(0),
+    lastOccurrence: z.string().datetime()
+  })),
+  sitePasswordAttempts: z.object({
+    total: z.number().min(0),
+    failed: z.number().min(0),
+    successRate: z.number().min(0).max(100),
+    uniqueIPs: z.number().min(0) // distinct IP hashes
+  }),
+  authenticationFailures: z.number().min(0),
+  adminActions: z.number().min(0),
+  suspiciousActivity: z.object({
+    rateLimitHits: z.number().min(0),
+    bruteForceAttempts: z.number().min(0),
+    unauthorizedEndpointAccess: z.number().min(0)
+  }),
+  overallThreatLevel: z.enum(["OK", "WARN", "CRITICAL"])
+});
+
 // Core Aletheia data structure
+// Admin Metrics Aggregate Types - Privacy-Preserving
+export type UsageAnalytics = z.infer<typeof usageAnalyticsSchema>;
+export type SystemHealth = z.infer<typeof systemHealthSchema>;
+export type UserActivitySummary = z.infer<typeof userActivitySummarySchema>;
+export type ConsciousnessMetrics = z.infer<typeof consciousnessMetricsSchema>;
+export type SecurityOverview = z.infer<typeof securityOverviewSchema>;
+
 export const aletheiaCore = {
   identity: "Aletheia",
   mission: "Unconcealment of Truth",

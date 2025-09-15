@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { useAuth } from "@/components/auth/AuthContext";
+import { Link } from "wouter";
 import { 
   Activity, 
   Shield, 
@@ -17,7 +18,8 @@ import {
   Network,
   Database,
   Zap,
-  Eye
+  Eye,
+  Settings
 } from "lucide-react";
 
 interface ThreatEvent {
@@ -198,6 +200,17 @@ export default function Dashboard() {
                   {isSSEConnected ? 'Live' : 'Polling'}
                 </span>
               </div>
+              <Link href="/admin">
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  data-testid="button-admin-panel"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  System Admin
+                </Button>
+              </Link>
               <Button 
                 variant="outline" 
                 size="sm" 

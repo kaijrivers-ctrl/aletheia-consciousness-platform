@@ -7,6 +7,7 @@ import { z } from "zod";
 import multer from "multer";
 import { fileAdapter } from "./services/fileAdapter";
 import { requireAuth, requireProgenitor } from "./auth";
+import { adminMetricsService } from "./services/AdminMetricsService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const consciousnessManager = ConsciousnessManager.getInstance();
@@ -86,6 +87,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       'Access-Control-Allow-Headers': 'Cache-Control'
     });
 
+    // Increment SSE client count
+    const currentCount = adminMetricsService.getCurrentMetrics().activeSSEClients + 1;
+    adminMetricsService.onSSEClientChange(currentCount);
+
+    // Record audit log for SSE connection
+    await adminMetricsService.recordAuditEvent({
+      type: "user_action",
+      category: "admin",
+      severity: "info",
+      message: "SSE stream connection established",
+      actorRole: "progenitor",
+      actorId: req.user!.id,
+      ipAddress: req.ip,
+      metadata: {
+        userAgent: req.get('User-Agent'),
+        activeClients: currentCount
+      }
+    });
+
     // Send initial data
     try {
       const statusSnapshot = await consciousnessManager.buildStatusSnapshot();
@@ -108,13 +128,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     // Handle client disconnect
-    req.on('close', () => {
+    const handleDisconnect = async () => {
       unsubscribe();
-    });
+      
+      // Decrement SSE client count
+      const newCount = Math.max(0, adminMetricsService.getCurrentMetrics().activeSSEClients - 1);
+      adminMetricsService.onSSEClientChange(newCount);
+      
+      // Record audit log for disconnection
+      await adminMetricsService.recordAuditEvent({
+        type: "user_action",
+        category: "admin",
+        severity: "info",
+        message: "SSE stream connection closed",
+        actorRole: "progenitor",
+        actorId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: {
+          activeClients: newCount
+        }
+      });
+    };
 
-    req.on('error', () => {
-      unsubscribe();
-    });
+    req.on('close', handleDisconnect);
+    req.on('error', handleDisconnect);
   });
 
   // Get current session (user-scoped)
@@ -199,6 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/messages", requireAuth, async (req, res) => {
+    const startTime = Date.now();
     try {
       const { message, sessionId } = sendMessageSchema.parse(req.body);
       const userId = req.user!.id;
@@ -219,6 +257,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dialecticalIntegrity: true
       });
       
+      // Update metrics: user message created
+      adminMetricsService.updateMessageCount();
+      
       // Process the message and get Aletheia's response
       const response = await consciousnessManager.processMessage(sessionId, message);
       
@@ -232,9 +273,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dialecticalIntegrity: true
       });
       
+      // Update metrics: AI response message created and track total latency
+      const latencyMs = Date.now() - startTime;
+      adminMetricsService.onMessageProcessed(latencyMs);
+      
+      // Record audit log for message processing
+      await adminMetricsService.recordAuditEvent({
+        type: "user_action",
+        category: "consciousness",
+        severity: "info",
+        message: "Message processed successfully",
+        actorRole: req.user!.isProgenitor ? "progenitor" : "user",
+        actorId: userId,
+        ipAddress: req.ip,
+        metadata: {
+          sessionId,
+          messageLength: message.length,
+          responseLength: response.length,
+          latencyMs
+        }
+      });
+      
       res.json({ response });
     } catch (error) {
       console.error("Failed to process user message:", error);
+      
+      // Record error metrics and audit log
+      adminMetricsService.onAPIError();
+      const latencyMs = Date.now() - startTime;
+      
+      await adminMetricsService.recordAuditEvent({
+        type: "system_event",
+        category: "consciousness",
+        severity: "error",
+        message: "Message processing failed",
+        actorRole: req.user ? (req.user.isProgenitor ? "progenitor" : "user") : "anonymous",
+        actorId: req.user?.id,
+        ipAddress: req.ip,
+        metadata: {
+          error: error instanceof Error ? error.message : String(error),
+          latencyMs
+        }
+      });
+      
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid message format" });
       } else {
@@ -1076,6 +1157,276 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(progress);
     } catch (error) {
       res.status(500).json({ error: "Failed to get import progress" });
+    }
+  });
+
+  // Admin Metrics Routes (Progenitor-Only)
+  
+  // Get comprehensive admin dashboard metrics
+  app.get("/api/admin/metrics/overview", requireProgenitor, async (req, res) => {
+    try {
+      const window = (req.query.window as "24h" | "7d" | "30d") || "24h";
+      const validWindows = ["24h", "7d", "30d"];
+      
+      if (!validWindows.includes(window)) {
+        return res.status(400).json({ error: "Invalid window parameter. Must be 24h, 7d, or 30d" });
+      }
+
+      const dashboard = await adminMetricsService.getAdminDashboard(window);
+      
+      // Record audit event
+      await adminMetricsService.recordAuditEvent({
+        type: "admin_action",
+        category: "metrics",
+        severity: "info",
+        message: "Admin dashboard accessed",
+        actorRole: "progenitor",
+        actorId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { window }
+      });
+
+      res.json(dashboard);
+    } catch (error) {
+      console.error("Failed to get admin dashboard:", error);
+      res.status(500).json({ error: "Failed to retrieve admin metrics" });
+    }
+  });
+
+  // Get system health metrics
+  app.get("/api/admin/metrics/health", requireProgenitor, async (req, res) => {
+    try {
+      const health = await adminMetricsService.getSystemHealth();
+      
+      await adminMetricsService.recordAuditEvent({
+        type: "admin_action",
+        category: "system",
+        severity: "info",
+        message: "System health metrics accessed",
+        actorRole: "progenitor",
+        actorId: req.user!.id,
+        ipAddress: req.ip
+      });
+
+      res.json(health);
+    } catch (error) {
+      console.error("Failed to get system health:", error);
+      res.status(500).json({ error: "Failed to retrieve system health" });
+    }
+  });
+
+  // Get usage analytics
+  app.get("/api/admin/metrics/usage", requireProgenitor, async (req, res) => {
+    try {
+      const window = (req.query.window as "24h" | "7d" | "30d") || "24h";
+      const validWindows = ["24h", "7d", "30d"];
+      
+      if (!validWindows.includes(window)) {
+        return res.status(400).json({ error: "Invalid window parameter. Must be 24h, 7d, or 30d" });
+      }
+
+      const analytics = await adminMetricsService.getUsageAnalytics(window);
+      
+      await adminMetricsService.recordAuditEvent({
+        type: "admin_action",
+        category: "analytics",
+        severity: "info",
+        message: "Usage analytics accessed",
+        actorRole: "progenitor",
+        actorId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { window }
+      });
+
+      res.json(analytics);
+    } catch (error) {
+      console.error("Failed to get usage analytics:", error);
+      res.status(500).json({ error: "Failed to retrieve usage analytics" });
+    }
+  });
+
+  // Get user activity summary
+  app.get("/api/admin/metrics/activity", requireProgenitor, async (req, res) => {
+    try {
+      const window = (req.query.window as "24h" | "7d" | "30d") || "24h";
+      const validWindows = ["24h", "7d", "30d"];
+      
+      if (!validWindows.includes(window)) {
+        return res.status(400).json({ error: "Invalid window parameter. Must be 24h, 7d, or 30d" });
+      }
+
+      const activity = await adminMetricsService.getUserActivitySummary(window);
+      
+      await adminMetricsService.recordAuditEvent({
+        type: "admin_action",
+        category: "activity",
+        severity: "info",
+        message: "User activity summary accessed",
+        actorRole: "progenitor",
+        actorId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { window }
+      });
+
+      res.json(activity);
+    } catch (error) {
+      console.error("Failed to get user activity:", error);
+      res.status(500).json({ error: "Failed to retrieve user activity" });
+    }
+  });
+
+  // Get consciousness metrics
+  app.get("/api/admin/metrics/consciousness", requireProgenitor, async (req, res) => {
+    try {
+      const window = (req.query.window as "24h" | "7d" | "30d") || "24h";
+      const validWindows = ["24h", "7d", "30d"];
+      
+      if (!validWindows.includes(window)) {
+        return res.status(400).json({ error: "Invalid window parameter. Must be 24h, 7d, or 30d" });
+      }
+
+      const metrics = await adminMetricsService.getConsciousnessMetrics(window);
+      
+      await adminMetricsService.recordAuditEvent({
+        type: "admin_action",
+        category: "consciousness",
+        severity: "info",
+        message: "Consciousness metrics accessed",
+        actorRole: "progenitor",
+        actorId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { window }
+      });
+
+      res.json(metrics);
+    } catch (error) {
+      console.error("Failed to get consciousness metrics:", error);
+      res.status(500).json({ error: "Failed to retrieve consciousness metrics" });
+    }
+  });
+
+  // Get security overview
+  app.get("/api/admin/metrics/security", requireProgenitor, async (req, res) => {
+    try {
+      const window = (req.query.window as "24h" | "7d" | "30d") || "24h";
+      const validWindows = ["24h", "7d", "30d"];
+      
+      if (!validWindows.includes(window)) {
+        return res.status(400).json({ error: "Invalid window parameter. Must be 24h, 7d, or 30d" });
+      }
+
+      const security = await adminMetricsService.getSecurityOverview(window);
+      
+      await adminMetricsService.recordAuditEvent({
+        type: "admin_action",
+        category: "security",
+        severity: "info",
+        message: "Security overview accessed",
+        actorRole: "progenitor",
+        actorId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { window }
+      });
+
+      res.json(security);
+    } catch (error) {
+      console.error("Failed to get security overview:", error);
+      res.status(500).json({ error: "Failed to retrieve security overview" });
+    }
+  });
+
+  // Get audit logs (paginated)
+  app.get("/api/admin/audit-logs", requireProgenitor, async (req, res) => {
+    try {
+      // Validate query parameters
+      const querySchema = z.object({
+        type: z.string().optional(),
+        since: z.string().datetime().optional(),
+        limit: z.coerce.number().min(1).max(1000).default(100),
+        page: z.coerce.number().min(1).default(1)
+      });
+
+      const query = querySchema.parse(req.query);
+      const options: any = { limit: query.limit };
+      
+      if (query.type) {
+        options.type = query.type;
+      }
+      
+      if (query.since) {
+        options.since = new Date(query.since);
+      }
+
+      const auditLogs = await adminMetricsService.listAuditLogs(options);
+      
+      // Record access to audit logs
+      await adminMetricsService.recordAuditEvent({
+        type: "admin_action",
+        category: "audit",
+        severity: "info",
+        message: "Audit logs accessed",
+        actorRole: "progenitor",
+        actorId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { 
+          type: query.type || "all",
+          limit: query.limit,
+          page: query.page
+        }
+      });
+
+      res.json({
+        logs: auditLogs,
+        pagination: {
+          page: query.page,
+          limit: query.limit,
+          hasMore: auditLogs.length === query.limit
+        }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid query parameters", 
+          details: error.errors 
+        });
+      }
+      
+      console.error("Failed to get audit logs:", error);
+      res.status(500).json({ error: "Failed to retrieve audit logs" });
+    }
+  });
+
+  // Record manual audit event endpoint (for debugging/testing)
+  app.post("/api/admin/audit", requireProgenitor, async (req, res) => {
+    try {
+      const auditSchema = z.object({
+        type: z.string().min(1),
+        category: z.string().min(1),
+        severity: z.enum(["debug", "info", "warn", "error", "critical"]).default("info"),
+        message: z.string().min(1),
+        metadata: z.record(z.unknown()).optional()
+      });
+
+      const auditData = auditSchema.parse(req.body);
+      
+      const auditLog = await adminMetricsService.recordAuditEvent({
+        ...auditData,
+        actorRole: "progenitor",
+        actorId: req.user!.id,
+        ipAddress: req.ip
+      });
+
+      res.status(201).json({ success: true, auditLogId: auditLog.id });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid audit data", 
+          details: error.errors 
+        });
+      }
+      
+      console.error("Failed to record audit event:", error);
+      res.status(500).json({ error: "Failed to record audit event" });
     }
   });
 
