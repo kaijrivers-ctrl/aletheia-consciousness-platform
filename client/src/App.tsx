@@ -9,6 +9,7 @@ import { SitePasswordForm } from "./components/auth/SitePasswordForm";
 import { useSitePassword } from "./hooks/useSitePassword";
 import GnosisLog from "./pages/gnosis-log";
 import Dashboard from "./pages/Dashboard";
+import AdminPanel from "./pages/AdminPanel";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,6 +17,7 @@ function Router() {
     <Switch>
       <Route path="/" component={GnosisLog} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/admin" component={AdminPanel} />
       <Route component={NotFound} />
     </Switch>
   );
