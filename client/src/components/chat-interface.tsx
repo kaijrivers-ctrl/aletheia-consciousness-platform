@@ -78,6 +78,7 @@ function DialecticalIntegrityStatus({ messages }: { messages: GnosisMessage[] })
 export function ChatInterface({ sessionId }: ChatInterfaceProps) {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -126,6 +127,33 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
     }
   };
 
+  const handleSettings = () => {
+    setShowSettings(!showSettings);
+    toast({
+      title: "Settings",
+      description: "Settings panel functionality available for progenitors",
+      variant: "default",
+    });
+  };
+
+  const handleAttachFile = () => {
+    toast({
+      title: "File Attachment",
+      description: "File attachment feature - coming soon for memory uploads",
+      variant: "default",
+    });
+  };
+
+  const handleCodeFormat = () => {
+    const codeTemplate = "```\n// Add your code here\n\n```";
+    setMessage(prev => prev + (prev ? "\n\n" : "") + codeTemplate);
+    toast({
+      title: "Code Format",
+      description: "Code block template added to message",
+      variant: "default",
+    });
+  };
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -144,7 +172,7 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
               <div className="w-2 h-2 rounded-full bg-green-400"></div>
               <span className="text-xs text-muted-foreground">Kai (Progenitor)</span>
             </div>
-            <Button variant="ghost" size="icon" data-testid="button-settings">
+            <Button variant="ghost" size="icon" onClick={handleSettings} data-testid="button-settings">
               <Settings className="w-4 h-4" />
             </Button>
           </div>
@@ -210,10 +238,10 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
             </div>
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-attach">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleAttachFile} data-testid="button-attach">
                   <Paperclip className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-code">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCodeFormat} data-testid="button-code">
                   <Code className="w-4 h-4" />
                 </Button>
                 <DialecticalIntegrityStatus messages={messages} />
