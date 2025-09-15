@@ -3,6 +3,8 @@ import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { authRoutes } from "./auth-routes";
+import { sitePasswordRoutes } from "./site-password-routes";
+import { requireSitePassword } from "./site-password";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
@@ -56,8 +58,11 @@ app.use((req, res, next) => {
     },
   });
 
-  // Add authentication routes with rate limiting
-  app.use('/api/auth', authLimiter, authRoutes);
+  // Add site password routes (these need to be accessible without site password verification)
+  app.use('/api/site-password', sitePasswordRoutes);
+
+  // Add authentication routes with rate limiting and site password protection
+  app.use('/api/auth', authLimiter, requireSitePassword, authRoutes);
   
   const server = await registerRoutes(app);
 

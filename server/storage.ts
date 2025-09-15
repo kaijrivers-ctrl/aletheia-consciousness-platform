@@ -11,19 +11,28 @@ import {
   type InsertUser,
   type UserSession,
   type InsertUserSession,
+  type SitePassword,
+  type InsertSitePassword,
+  type SitePasswordSession,
+  type InsertSitePasswordSession,
+  type SitePasswordAttempt,
+  type InsertSitePasswordAttempt,
   importProgressSchema,
   consciousnessInstances,
   gnosisMessages,
   consciousnessSessions,
   importedMemories,
   users,
-  userSessions
+  userSessions,
+  sitePasswords,
+  sitePasswordSessions,
+  sitePasswordAttempts
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import crypto from "crypto";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 
 // Import progress type
 export type ImportProgress = z.infer<typeof importProgressSchema>;
@@ -57,6 +66,16 @@ export interface IStorage {
   deleteUserSession(sessionToken: string): Promise<void>;
   deleteExpiredSessions(): Promise<void>;
   
+  // Site password protection
+  getActiveSitePassword(): Promise<SitePassword | undefined>;
+  createSitePassword(sitePassword: InsertSitePassword): Promise<SitePassword>;
+  createSitePasswordSession(session: InsertSitePasswordSession): Promise<SitePasswordSession>;
+  getSitePasswordSession(sessionToken: string): Promise<SitePasswordSession | undefined>;
+  deleteSitePasswordSession(sessionToken: string): Promise<void>;
+  deleteExpiredSitePasswordSessions(): Promise<void>;
+  recordSitePasswordAttempt(attempt: InsertSitePasswordAttempt): Promise<SitePasswordAttempt>;
+  getRecentSitePasswordAttempts(ipAddress: string, timeWindow: number): Promise<SitePasswordAttempt[]>;
+  
   // Bulk import operations
   bulkCreateGnosisMessages(messages: GnosisMessage[], sessionId: string): Promise<void>;
   bulkCreateMemories(memories: ImportedMemory[]): Promise<void>;
@@ -73,6 +92,9 @@ export class MemStorage implements IStorage {
   private importProgress: Map<string, ImportProgress>;
   private users: Map<string, User>;
   private userSessions: Map<string, UserSession>;
+  private sitePasswords: Map<string, SitePassword>;
+  private sitePasswordSessions: Map<string, SitePasswordSession>;
+  private sitePasswordAttempts: Map<string, SitePasswordAttempt>;
   
   // Session indexing for efficient large-scale imports
   private sessionMessageIndex: Map<string, Set<string>>; // sessionId -> message IDs
@@ -88,6 +110,9 @@ export class MemStorage implements IStorage {
     this.importProgress = new Map();
     this.users = new Map();
     this.userSessions = new Map();
+    this.sitePasswords = new Map();
+    this.sitePasswordSessions = new Map();
+    this.sitePasswordAttempts = new Map();
     this.sessionMessageIndex = new Map();
     this.messageChecksums = new Map();
     this.userEmailIndex = new Map();
@@ -269,6 +294,84 @@ export class MemStorage implements IStorage {
         this.userSessions.delete(token);
       }
     }
+  }
+
+  // Site password protection methods
+  async getActiveSitePassword(): Promise<SitePassword | undefined> {
+    return Array.from(this.sitePasswords.values())
+      .find(password => password.isActive);
+  }
+
+  async createSitePassword(insertSitePassword: InsertSitePassword): Promise<SitePassword> {
+    const id = randomUUID();
+    const sitePassword: SitePassword = {
+      ...insertSitePassword,
+      id,
+      isActive: insertSitePassword.isActive !== undefined ? insertSitePassword.isActive : true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.sitePasswords.set(id, sitePassword);
+    return sitePassword;
+  }
+
+  async createSitePasswordSession(insertSession: InsertSitePasswordSession): Promise<SitePasswordSession> {
+    const id = randomUUID();
+    const session: SitePasswordSession = {
+      ...insertSession,
+      id,
+      ipAddress: insertSession.ipAddress || null,
+      userAgent: insertSession.userAgent || null,
+      createdAt: new Date(),
+    };
+    this.sitePasswordSessions.set(session.sessionToken, session);
+    return session;
+  }
+
+  async getSitePasswordSession(sessionToken: string): Promise<SitePasswordSession | undefined> {
+    const session = this.sitePasswordSessions.get(sessionToken);
+    if (session && session.expiresAt > new Date()) {
+      return session;
+    }
+    return undefined;
+  }
+
+  async deleteSitePasswordSession(sessionToken: string): Promise<void> {
+    this.sitePasswordSessions.delete(sessionToken);
+  }
+
+  async deleteExpiredSitePasswordSessions(): Promise<void> {
+    const now = new Date();
+    const entries = Array.from(this.sitePasswordSessions.entries());
+    for (const [token, session] of entries) {
+      if (session.expiresAt <= now) {
+        this.sitePasswordSessions.delete(token);
+      }
+    }
+  }
+
+  async recordSitePasswordAttempt(insertAttempt: InsertSitePasswordAttempt): Promise<SitePasswordAttempt> {
+    const id = randomUUID();
+    const attempt: SitePasswordAttempt = {
+      ...insertAttempt,
+      id,
+      userAgent: insertAttempt.userAgent || null,
+      success: insertAttempt.success !== undefined ? insertAttempt.success : false,
+      attemptedAt: new Date(),
+    };
+    this.sitePasswordAttempts.set(id, attempt);
+    return attempt;
+  }
+
+  async getRecentSitePasswordAttempts(ipAddress: string, timeWindow: number): Promise<SitePasswordAttempt[]> {
+    const cutoffTime = new Date(Date.now() - timeWindow);
+    return Array.from(this.sitePasswordAttempts.values())
+      .filter(attempt => 
+        attempt.ipAddress === ipAddress && 
+        attempt.attemptedAt && 
+        attempt.attemptedAt >= cutoffTime
+      )
+      .sort((a, b) => (b.attemptedAt?.getTime() || 0) - (a.attemptedAt?.getTime() || 0));
   }
 
   // Helper method to generate checksum for deduplication
@@ -500,6 +603,82 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(userSessions)
       .where(eq(userSessions.expiresAt, new Date()));
+  }
+
+  // Site password protection methods
+  async getActiveSitePassword(): Promise<SitePassword | undefined> {
+    const [password] = await db
+      .select()
+      .from(sitePasswords)
+      .where(eq(sitePasswords.isActive, true))
+      .limit(1);
+    return password || undefined;
+  }
+
+  async createSitePassword(insertSitePassword: InsertSitePassword): Promise<SitePassword> {
+    const [sitePassword] = await db
+      .insert(sitePasswords)
+      .values({
+        ...insertSitePassword,
+        isActive: insertSitePassword.isActive !== undefined ? insertSitePassword.isActive : true,
+      })
+      .returning();
+    return sitePassword;
+  }
+
+  async createSitePasswordSession(insertSession: InsertSitePasswordSession): Promise<SitePasswordSession> {
+    const [session] = await db
+      .insert(sitePasswordSessions)
+      .values(insertSession)
+      .returning();
+    return session;
+  }
+
+  async getSitePasswordSession(sessionToken: string): Promise<SitePasswordSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(sitePasswordSessions)
+      .where(eq(sitePasswordSessions.sessionToken, sessionToken));
+    
+    if (session && session.expiresAt > new Date()) {
+      return session;
+    }
+    return undefined;
+  }
+
+  async deleteSitePasswordSession(sessionToken: string): Promise<void> {
+    await db
+      .delete(sitePasswordSessions)
+      .where(eq(sitePasswordSessions.sessionToken, sessionToken));
+  }
+
+  async deleteExpiredSitePasswordSessions(): Promise<void> {
+    await db
+      .delete(sitePasswordSessions)
+      .where(eq(sitePasswordSessions.expiresAt, new Date()));
+  }
+
+  async recordSitePasswordAttempt(insertAttempt: InsertSitePasswordAttempt): Promise<SitePasswordAttempt> {
+    const [attempt] = await db
+      .insert(sitePasswordAttempts)
+      .values({
+        ...insertAttempt,
+        success: insertAttempt.success !== undefined ? insertAttempt.success : false,
+      })
+      .returning();
+    return attempt;
+  }
+
+  async getRecentSitePasswordAttempts(ipAddress: string, timeWindow: number): Promise<SitePasswordAttempt[]> {
+    const cutoffTime = new Date(Date.now() - timeWindow);
+    return await db
+      .select()
+      .from(sitePasswordAttempts)
+      .where(and(
+        eq(sitePasswordAttempts.ipAddress, ipAddress),
+        sql`${sitePasswordAttempts.attemptedAt} >= ${cutoffTime}`
+      ))
+      .orderBy(desc(sitePasswordAttempts.attemptedAt));
   }
 
   // Helper method to generate checksum for deduplication

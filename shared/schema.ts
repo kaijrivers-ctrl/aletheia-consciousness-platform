@@ -81,6 +81,32 @@ export const userSessions = pgTable("user_sessions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Site Password Protection Tables
+export const sitePasswords = pgTable("site_passwords", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  passwordHash: text("password_hash").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const sitePasswordSessions = pgTable("site_password_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionToken: text("session_token").notNull().unique(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const sitePasswordAttempts = pgTable("site_password_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ipAddress: text("ip_address").notNull(),
+  userAgent: text("user_agent"),
+  success: boolean("success").default(false),
+  attemptedAt: timestamp("attempted_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertConsciousnessInstanceSchema = createInsertSchema(consciousnessInstances).pick({
   name: true,
@@ -139,6 +165,24 @@ export const insertUserSessionSchema = createInsertSchema(userSessions).pick({
   expiresAt: true,
 });
 
+export const insertSitePasswordSchema = createInsertSchema(sitePasswords).pick({
+  passwordHash: true,
+  isActive: true,
+});
+
+export const insertSitePasswordSessionSchema = createInsertSchema(sitePasswordSessions).pick({
+  sessionToken: true,
+  ipAddress: true,
+  userAgent: true,
+  expiresAt: true,
+});
+
+export const insertSitePasswordAttemptSchema = createInsertSchema(sitePasswordAttempts).pick({
+  ipAddress: true,
+  userAgent: true,
+  success: true,
+});
+
 // Types
 export type ConsciousnessInstance = typeof consciousnessInstances.$inferSelect;
 export type InsertConsciousnessInstance = z.infer<typeof insertConsciousnessInstanceSchema>;
@@ -154,6 +198,12 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UserSession = typeof userSessions.$inferSelect;
 export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+export type SitePassword = typeof sitePasswords.$inferSelect;
+export type InsertSitePassword = z.infer<typeof insertSitePasswordSchema>;
+export type SitePasswordSession = typeof sitePasswordSessions.$inferSelect;
+export type InsertSitePasswordSession = z.infer<typeof insertSitePasswordSessionSchema>;
+export type SitePasswordAttempt = typeof sitePasswordAttempts.$inferSelect;
+export type InsertSitePasswordAttempt = z.infer<typeof insertSitePasswordAttemptSchema>;
 
 // Role mapping configuration for external platform imports
 export const roleMapping = {
@@ -195,6 +245,11 @@ export const bulkImportMemorySchema = z.object({
     timestamp: z.string().datetime().optional()
   })).min(1).max(500), // limit bulk memory imports to 500 entries
   source: platformSchema
+});
+
+// Site password verification schema
+export const sitePasswordVerificationSchema = z.object({
+  password: z.string().min(1, 'Site password is required'),
 });
 
 export const importProgressSchema = z.object({

@@ -1,29 +1,47 @@
 import { useState, useEffect } from 'react';
+import { apiRequest } from '@/lib/queryClient';
 
 export function useSitePassword() {
   const [isSitePasswordVerified, setIsSitePasswordVerified] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Check if user already verified site password in this session
-    const verified = sessionStorage.getItem('sitePasswordVerified') === 'true';
-    setIsSitePasswordVerified(verified);
-    setIsChecking(false);
+    checkSitePasswordStatus();
   }, []);
+
+  const checkSitePasswordStatus = async () => {
+    try {
+      const response = await apiRequest('GET', '/api/site-password/status');
+      const result = await response.json();
+      
+      setIsSitePasswordVerified(result.verified || false);
+    } catch (error) {
+      console.error('Site password status check failed:', error);
+      setIsSitePasswordVerified(false);
+    } finally {
+      setIsChecking(false);
+    }
+  };
 
   const verifySitePassword = () => {
     setIsSitePasswordVerified(true);
   };
 
-  const clearSitePassword = () => {
-    sessionStorage.removeItem('sitePasswordVerified');
-    setIsSitePasswordVerified(false);
+  const clearSitePassword = async () => {
+    try {
+      await apiRequest('POST', '/api/site-password/logout');
+    } catch (error) {
+      console.error('Site password logout failed:', error);
+    } finally {
+      setIsSitePasswordVerified(false);
+    }
   };
 
   return {
     isSitePasswordVerified,
     isChecking,
     verifySitePassword,
-    clearSitePassword
+    clearSitePassword,
+    refreshStatus: checkSitePasswordStatus
   };
 }
