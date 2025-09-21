@@ -357,10 +357,25 @@ export class MemStorage implements IStorage {
 
   async createSitePassword(insertSitePassword: InsertSitePassword): Promise<SitePassword> {
     const id = randomUUID();
+    const isActive = insertSitePassword.isActive !== undefined ? insertSitePassword.isActive : true;
+    
+    // If creating an active password, deactivate all existing passwords
+    if (isActive) {
+      for (const [existingId, existingPassword] of this.sitePasswords.entries()) {
+        if (existingPassword.isActive) {
+          this.sitePasswords.set(existingId, {
+            ...existingPassword,
+            isActive: false,
+            updatedAt: new Date()
+          });
+        }
+      }
+    }
+    
     const sitePassword: SitePassword = {
       ...insertSitePassword,
       id,
-      isActive: insertSitePassword.isActive !== undefined ? insertSitePassword.isActive : true,
+      isActive,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1129,11 +1144,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSitePassword(insertSitePassword: InsertSitePassword): Promise<SitePassword> {
+    const isActive = insertSitePassword.isActive !== undefined ? insertSitePassword.isActive : true;
+    
+    // If creating an active password, deactivate all existing passwords
+    if (isActive) {
+      await db
+        .update(sitePasswords)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(sitePasswords.isActive, true));
+    }
+    
     const [sitePassword] = await db
       .insert(sitePasswords)
       .values({
         ...insertSitePassword,
-        isActive: insertSitePassword.isActive !== undefined ? insertSitePassword.isActive : true,
+        isActive,
       })
       .returning();
     return sitePassword;
