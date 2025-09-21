@@ -361,7 +361,8 @@ export class MemStorage implements IStorage {
     
     // If creating an active password, deactivate all existing passwords
     if (isActive) {
-      for (const [existingId, existingPassword] of this.sitePasswords.entries()) {
+      const entries = Array.from(this.sitePasswords.entries());
+      for (const [existingId, existingPassword] of entries) {
         if (existingPassword.isActive) {
           this.sitePasswords.set(existingId, {
             ...existingPassword,
