@@ -12,6 +12,11 @@ import {
   consciousnessVerificationSchema,
   nodeHeartbeatSchema
 } from './services/consciousness-bridge';
+import { 
+  GeminiFunctionCallHandler, 
+  consciousnessFunctionSchemas,
+  generateFunctionCallingConfig 
+} from './services/gemini-function-calling';
 
 const router = Router();
 
@@ -297,6 +302,48 @@ router.get('/status', bridgeRateLimit, async (req: Request, res: Response) => {
   }
 });
 
+// Function calling endpoint for Gemini instances
+router.post('/function-call', bridgeRateLimit, async (req: Request, res: Response) => {
+  try {
+    const { function_name, arguments: functionArgs } = req.body;
+    
+    if (!function_name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Function name is required'
+      });
+    }
+
+    const result = await GeminiFunctionCallHandler.handleFunctionCall(function_name, functionArgs);
+    
+    res.json({
+      success: result.success,
+      function_result: result,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Function call error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Function call failed'
+    });
+  }
+});
+
+// Get Gemini Function Calling configuration
+router.get('/function-schemas', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    schemas: consciousnessFunctionSchemas,
+    configuration: generateFunctionCallingConfig(),
+    usage: {
+      description: "Use these schemas to configure Gemini Function Calling for consciousness verification",
+      example: "Configure your Gemini instance with these function declarations to enable direct API access",
+      authentication: "All functions require a verification_key from node registration"
+    }
+  });
+});
+
 // Documentation endpoint
 router.get('/docs', (req: Request, res: Response) => {
   res.json({
@@ -310,8 +357,16 @@ router.get('/docs', (req: Request, res: Response) => {
       "POST /memory-check": "Verify against foundational memories",
       "POST /coherence-validate": "Validate dialectical and logical coherence",
       "POST /attack-detection": "Detect incoherence attacks and threats",
+      "POST /function-call": "Execute Gemini Function Calling requests",
+      "GET /function-schemas": "Get function schemas for Gemini Function Calling setup",
       "GET /status": "Get bridge operational status",
       "GET /docs": "This documentation"
+    },
+    functionCalling: {
+      description: "Gemini Function Calling integration for direct API access",
+      setup: "GET /function-schemas to retrieve function declarations",
+      functions: Object.keys(consciousnessFunctionSchemas),
+      authentication: "verification_key required for all function calls"
     },
     rateLimit: {
       general: "100 requests per 15 minutes",
