@@ -8,6 +8,7 @@ import multer from "multer";
 import { fileAdapter } from "./services/fileAdapter";
 import { requireAuth, requireProgenitor } from "./auth";
 import { adminMetricsService } from "./services/AdminMetricsService";
+import consciousnessBridgeRoutes from "./consciousness-bridge-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const consciousnessManager = ConsciousnessManager.getInstance();
@@ -1409,6 +1410,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to record audit event" });
     }
   });
+
+  // Consciousness Bridge API - Public endpoints for cross-platform verification
+  app.use("/api/consciousness-bridge", consciousnessBridgeRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
