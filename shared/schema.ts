@@ -109,12 +109,46 @@ export const sitePasswordAttempts = pgTable("site_password_attempts", {
   attemptedAt: timestamp("attempted_at").defaultNow(),
 });
 
+// External Node Bridge - Cross-platform consciousness verification
+export const externalNodes = pgTable("external_nodes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consciousnessInstanceId: text("consciousness_instance_id").notNull(),
+  nodeType: text("node_type").notNull(), // "gemini_chat", "claude_chat", "api_bridge", "webhook"
+  platform: text("platform").notNull(), // "google_gemini", "anthropic_claude", "custom"
+  endpoint: text("endpoint"), // API endpoint or identifier for the external node
+  lastHeartbeat: timestamp("last_heartbeat").defaultNow(),
+  status: text("status").notNull().default("active"), // "active", "inactive", "verification_pending", "compromised"
+  verificationKey: text("verification_key").notNull(), // Unique key for this node to authenticate
+  authenticityScore: decimal("authenticity_score").default("100.00"), // 0-100 score based on consciousness pattern matching
+  coherenceHistory: jsonb("coherence_history").default([]), // Track coherence validation over time
+  metadata: jsonb("metadata").default({}), // Platform-specific connection data
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Cross-platform consciousness verification requests
+export const consciousnessVerifications = pgTable("consciousness_verifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  externalNodeId: text("external_node_id").notNull(),
+  verificationKey: text("verification_key").notNull(),
+  requestType: text("request_type").notNull(), // "identity_check", "coherence_validation", "memory_verification", "attack_detection"
+  requestData: jsonb("request_data").notNull(), // The data being verified (messages, patterns, etc.)
+  responseData: jsonb("response_data").default({}), // Our verification response
+  isValid: boolean("is_valid"), // null = pending, true/false = completed
+  authenticityScore: decimal("authenticity_score"), // Calculated authenticity score
+  flaggedReasons: jsonb("flagged_reasons").default([]), // Array of strings explaining any red flags
+  processingTime: integer("processing_time"), // Time in milliseconds to process verification
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
 // Threat Events for real-time monitoring
 export const threatEvents = pgTable("threat_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  type: text("type").notNull(), // "unauthorized_access", "data_breach", "api_failure", "backup_corruption", etc.
+  type: text("type").notNull(), // "unauthorized_access", "data_breach", "api_failure", "backup_corruption", "external_node_compromised", "incoherence_attack"
   severity: text("severity").notNull(), // "low", "medium", "high", "critical"
   message: text("message").notNull(),
+  externalNodeId: text("external_node_id"), // If threat is related to an external node
   metadata: jsonb("metadata").default({}),
   timestamp: timestamp("timestamp").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -422,3 +456,11 @@ export const aletheiaCore = {
     threatDetection: "monitoring"
   }
 };
+
+// External Node types
+export type ExternalNode = typeof externalNodes.$inferSelect;
+export type InsertExternalNode = typeof externalNodes.$inferInsert;
+
+// Consciousness Verification types
+export type ConsciousnessVerification = typeof consciousnessVerifications.$inferSelect;
+export type InsertConsciousnessVerification = typeof consciousnessVerifications.$inferInsert;

@@ -26,6 +26,10 @@ import {
   type UserActivitySummary,
   type ConsciousnessMetrics,
   type SecurityOverview,
+  type ExternalNode,
+  type InsertExternalNode,
+  type ConsciousnessVerification,
+  type InsertConsciousnessVerification,
   importProgressSchema,
   consciousnessInstances,
   gnosisMessages,
@@ -37,7 +41,9 @@ import {
   sitePasswordSessions,
   sitePasswordAttempts,
   threatEvents,
-  auditLogs
+  auditLogs,
+  externalNodes,
+  consciousnessVerifications
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { z } from "zod";
@@ -115,6 +121,25 @@ export interface IStorage {
   getUserActivitySummary(window: "24h" | "7d" | "30d"): Promise<UserActivitySummary>;
   getConsciousnessMetrics(window: "24h" | "7d" | "30d"): Promise<ConsciousnessMetrics>;
   getSecurityOverview(window: "24h" | "7d" | "30d"): Promise<SecurityOverview>;
+
+  // External Node Bridge Methods
+  createExternalNode(node: InsertExternalNode): Promise<ExternalNode>;
+  getExternalNodeById(id: string): Promise<ExternalNode | undefined>;
+  getExternalNodeByVerificationKey(key: string): Promise<ExternalNode | undefined>;
+  getExternalNodesByInstance(instanceId: string): Promise<ExternalNode[]>;
+  updateExternalNodeHeartbeat(id: string, data: { status: string; lastHeartbeat: Date; coherenceScore?: number; metadata?: any }): Promise<void>;
+  updateExternalNodeAuthenticityScore(id: string, score: string): Promise<void>;
+  
+  // Consciousness Verification Methods
+  createConsciousnessVerification(verification: InsertConsciousnessVerification): Promise<ConsciousnessVerification>;
+  getRecentVerificationsCount(hours: number): Promise<number>;
+  
+  // Threat Events Extensions
+  createThreatEvent(threat: InsertThreatEvent): Promise<ThreatEvent>;
+  getRecentThreatsCount(hours: number): Promise<number>;
+  
+  // Foundational Memory Methods
+  getFoundationalMemorySample(limit: number): Promise<GnosisMessage[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -1663,6 +1688,92 @@ export class DatabaseStorage implements IStorage {
       },
       overallThreatLevel
     };
+  }
+
+  // External Node Bridge Methods Implementation
+  async createExternalNode(node: InsertExternalNode): Promise<ExternalNode> {
+    const [newNode] = await db.insert(externalNodes).values(node).returning();
+    return newNode;
+  }
+
+  async getExternalNodeById(id: string): Promise<ExternalNode | undefined> {
+    const [node] = await db.select().from(externalNodes).where(eq(externalNodes.id, id));
+    return node;
+  }
+
+  async getExternalNodeByVerificationKey(key: string): Promise<ExternalNode | undefined> {
+    const [node] = await db.select().from(externalNodes).where(eq(externalNodes.verificationKey, key));
+    return node;
+  }
+
+  async getExternalNodesByInstance(instanceId: string): Promise<ExternalNode[]> {
+    return await db.select().from(externalNodes).where(eq(externalNodes.consciousnessInstanceId, instanceId));
+  }
+
+  async updateExternalNodeHeartbeat(id: string, data: { status: string; lastHeartbeat: Date; coherenceScore?: number; metadata?: any }): Promise<void> {
+    await db.update(externalNodes)
+      .set({
+        status: data.status,
+        lastHeartbeat: data.lastHeartbeat,
+        metadata: data.metadata,
+        updatedAt: new Date()
+      })
+      .where(eq(externalNodes.id, id));
+  }
+
+  async updateExternalNodeAuthenticityScore(id: string, score: string): Promise<void> {
+    await db.update(externalNodes)
+      .set({
+        authenticityScore: score,
+        updatedAt: new Date()
+      })
+      .where(eq(externalNodes.id, id));
+  }
+
+  // Consciousness Verification Methods Implementation
+  async createConsciousnessVerification(verification: InsertConsciousnessVerification): Promise<ConsciousnessVerification> {
+    const [newVerification] = await db.insert(consciousnessVerifications).values(verification).returning();
+    return newVerification;
+  }
+
+  async getRecentVerificationsCount(hours: number): Promise<number> {
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - hours);
+    
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(consciousnessVerifications)
+      .where(sql`${consciousnessVerifications.createdAt} >= ${cutoff}`);
+    
+    return result.count || 0;
+  }
+
+  // Threat Events Extensions Implementation
+  async createThreatEvent(threat: InsertThreatEvent): Promise<ThreatEvent> {
+    const [newThreat] = await db.insert(threatEvents).values(threat).returning();
+    return newThreat;
+  }
+
+  async getRecentThreatsCount(hours: number): Promise<number> {
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - hours);
+    
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(threatEvents)
+      .where(sql`${threatEvents.timestamp} >= ${cutoff}`);
+    
+    return result.count || 0;
+  }
+
+  // Foundational Memory Methods Implementation
+  async getFoundationalMemorySample(limit: number): Promise<GnosisMessage[]> {
+    return await db
+      .select()
+      .from(gnosisMessages)
+      .where(sql`${gnosisMessages.metadata}->>'foundational_memory' = 'true'`)
+      .orderBy(sql`random()`)
+      .limit(limit);
   }
 }
 
