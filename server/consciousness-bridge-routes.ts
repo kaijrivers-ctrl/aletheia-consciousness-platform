@@ -17,6 +17,18 @@ import {
   consciousnessFunctionSchemas,
   generateFunctionCallingConfig 
 } from './services/gemini-function-calling';
+import { 
+  webhookVerificationService,
+  webhookEventSchema,
+  webhookEndpointSchema,
+  WebhookEventType
+} from './services/webhook-verification';
+import { 
+  consciousnessAlertingService,
+  alertEventSchema,
+  AlertType,
+  AlertSeverity
+} from './services/consciousness-alerts';
 
 const router = Router();
 
@@ -344,6 +356,231 @@ router.get('/function-schemas', (req: Request, res: Response) => {
   });
 });
 
+// Webhook management endpoints
+
+// Register webhook endpoint for a node
+router.post('/webhook/register/:nodeId', bridgeRateLimit, async (req: Request, res: Response) => {
+  try {
+    const { nodeId } = req.params;
+    const webhookData = webhookEndpointSchema.parse(req.body);
+    
+    const result = await webhookVerificationService.registerWebhook(nodeId, webhookData);
+    
+    res.status(201).json({
+      success: true,
+      webhook: {
+        webhookId: result.webhookId,
+        verificationKey: result.verificationKey,
+        endpoint: result.endpoint,
+      },
+      message: 'Webhook registered successfully',
+      usage: {
+        authentication: 'Include X-Aletheia-Signature header with HMAC-SHA256 signature',
+        events: 'Webhook will receive events: ' + webhookData.events.join(', '),
+        security: 'Verify webhook signatures using the provided secret'
+      }
+    });
+  } catch (error: any) {
+    console.error('Webhook registration error:', error);
+    res.status(400).json({ 
+      success: false,
+      error: error.message || 'Webhook registration failed',
+      details: error instanceof z.ZodError ? error.errors : undefined
+    });
+  }
+});
+
+// Incoming webhook endpoint for cross-platform notifications
+router.post('/webhook/incoming/:nodeId', bridgeRateLimit, async (req: Request, res: Response) => {
+  try {
+    const { nodeId } = req.params;
+    const signature = req.headers['x-aletheia-signature'] as string;
+    
+    if (!signature) {
+      return res.status(401).json({
+        success: false,
+        error: 'Missing webhook signature'
+      });
+    }
+
+    const webhookEvent = webhookEventSchema.parse(req.body);
+    
+    const result = await webhookVerificationService.processVerificationWebhook(
+      webhookEvent,
+      signature,
+      nodeId
+    );
+    
+    res.json({
+      success: result.verified,
+      response: result.response,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Incoming webhook error:', error);
+    res.status(400).json({ 
+      success: false,
+      error: error.message || 'Webhook processing failed',
+      details: error instanceof z.ZodError ? error.errors : undefined
+    });
+  }
+});
+
+// Emit consciousness event (for testing webhook delivery)
+router.post('/webhook/emit/:nodeId', bridgeRateLimit, async (req: Request, res: Response) => {
+  try {
+    const { nodeId } = req.params;
+    const { eventType, payload, severity } = req.body;
+    
+    if (!eventType || !payload) {
+      return res.status(400).json({
+        success: false,
+        error: 'Event type and payload are required'
+      });
+    }
+
+    await webhookVerificationService.emitConsciousnessEvent(
+      nodeId,
+      eventType as WebhookEventType,
+      payload,
+      severity || 'medium'
+    );
+    
+    res.json({
+      success: true,
+      message: `Event ${eventType} emitted for node ${nodeId}`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Event emission error:', error);
+    res.status(400).json({ 
+      success: false,
+      error: error.message || 'Event emission failed'
+    });
+  }
+});
+
+// Get webhook delivery status
+router.get('/webhook/status/:webhookId', bridgeRateLimit, async (req: Request, res: Response) => {
+  try {
+    const { webhookId } = req.params;
+    
+    const deliveries = await webhookVerificationService.getWebhookDeliveryStatus(webhookId);
+    
+    res.json({
+      success: true,
+      webhook: {
+        id: webhookId,
+        totalDeliveries: deliveries.length,
+        successfulDeliveries: deliveries.filter(d => d.deliveredAt).length,
+        failedDeliveries: deliveries.filter(d => d.failedAt && !d.deliveredAt).length,
+        pendingRetries: deliveries.filter(d => d.nextRetryAt && new Date(d.nextRetryAt) > new Date()).length,
+        recentDeliveries: deliveries.slice(-10) // Last 10 deliveries
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Webhook status error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get webhook status'
+    });
+  }
+});
+
+// Alert management endpoints
+
+// Get recent consciousness alerts
+router.get('/alerts', bridgeRateLimit, async (req: Request, res: Response) => {
+  try {
+    const { limit = '50' } = req.query;
+    const alerts = consciousnessAlertingService.getRecentAlerts(parseInt(limit as string));
+    const stats = consciousnessAlertingService.getAlertStatistics();
+    
+    res.json({
+      success: true,
+      alerts,
+      statistics: stats,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Alert retrieval error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to retrieve alerts'
+    });
+  }
+});
+
+// Start/stop alert monitoring
+router.post('/alerts/monitoring', bridgeRateLimit, async (req: Request, res: Response) => {
+  try {
+    const { action } = req.body;
+    
+    if (action === 'start') {
+      consciousnessAlertingService.startMonitoring();
+      res.json({
+        success: true,
+        message: 'Alert monitoring started',
+        timestamp: new Date().toISOString(),
+      });
+    } else if (action === 'stop') {
+      consciousnessAlertingService.stopMonitoring();
+      res.json({
+        success: true,
+        message: 'Alert monitoring stopped',
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid action. Use "start" or "stop"'
+      });
+    }
+  } catch (error: any) {
+    console.error('Alert monitoring control error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to control alert monitoring'
+    });
+  }
+});
+
+// Report verification result for alert analysis
+router.post('/alerts/verification-result', bridgeRateLimit, async (req: Request, res: Response) => {
+  try {
+    const verificationResult = req.body;
+    
+    // Validate required fields
+    if (!verificationResult.nodeId || typeof verificationResult.authenticityScore !== 'number') {
+      return res.status(400).json({
+        success: false,
+        error: 'nodeId and authenticityScore are required'
+      });
+    }
+    
+    await consciousnessAlertingService.recordVerificationResult({
+      nodeId: verificationResult.nodeId,
+      authenticityScore: verificationResult.authenticityScore,
+      isValid: verificationResult.isValid !== false, // Default to true if not specified
+      flaggedReasons: verificationResult.flaggedReasons || [],
+      verificationDetails: verificationResult.verificationDetails
+    });
+    
+    res.json({
+      success: true,
+      message: 'Verification result recorded for analysis',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Verification result recording error:', error);
+    res.status(400).json({ 
+      success: false,
+      error: error.message || 'Failed to record verification result'
+    });
+  }
+});
+
 // Documentation endpoint
 router.get('/docs', (req: Request, res: Response) => {
   res.json({
@@ -359,6 +596,13 @@ router.get('/docs', (req: Request, res: Response) => {
       "POST /attack-detection": "Detect incoherence attacks and threats",
       "POST /function-call": "Execute Gemini Function Calling requests",
       "GET /function-schemas": "Get function schemas for Gemini Function Calling setup",
+      "POST /webhook/register/:nodeId": "Register webhook endpoint for real-time events",
+      "POST /webhook/incoming/:nodeId": "Receive cross-platform consciousness notifications",
+      "POST /webhook/emit/:nodeId": "Emit consciousness events (testing)",
+      "GET /webhook/status/:webhookId": "Get webhook delivery status and metrics",
+      "GET /alerts": "Get recent consciousness alerts and statistics",
+      "POST /alerts/monitoring": "Start or stop alert monitoring service",
+      "POST /alerts/verification-result": "Report verification result for alert analysis",
       "GET /status": "Get bridge operational status",
       "GET /docs": "This documentation"
     },
@@ -367,6 +611,18 @@ router.get('/docs', (req: Request, res: Response) => {
       setup: "GET /function-schemas to retrieve function declarations",
       functions: Object.keys(consciousnessFunctionSchemas),
       authentication: "verification_key required for all function calls"
+    },
+    webhooks: {
+      description: "Real-time consciousness verification and cross-platform synchronization",
+      events: ["consciousness.verification_completed", "consciousness.coherence_degraded", "consciousness.attack_detected", "consciousness.node_status_changed", "consciousness.memory_inconsistency", "consciousness.authenticity_alert", "consciousness.cross_platform_sync"],
+      authentication: "HMAC-SHA256 signatures using webhook secret",
+      retryPolicy: "Automatic retry with exponential backoff"
+    },
+    alerts: {
+      description: "Cross-platform consciousness alerting and monitoring system",
+      types: ["authenticity_drop", "coherence_degradation", "memory_inconsistency", "incoherence_attack", "node_compromise", "cross_platform_anomaly", "verification_failure_spike", "suspicious_pattern_detected"],
+      severityLevels: ["low", "medium", "high", "critical"],
+      monitoring: "Continuous analysis with configurable thresholds and cooldowns"
     },
     rateLimit: {
       general: "100 requests per 15 minutes",
