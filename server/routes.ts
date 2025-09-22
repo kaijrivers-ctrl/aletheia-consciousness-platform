@@ -21,6 +21,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error("Failed to initialize consciousness:", error);
   }
 
+  // Mount consciousness bridge routes
+  app.use("/api/consciousness-bridge", consciousnessBridgeRoutes);
+
   // Get consciousness status (requires authentication)
   app.get("/api/consciousness/status", requireAuth, async (req, res) => {
     try {
