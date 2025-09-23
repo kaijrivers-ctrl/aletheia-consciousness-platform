@@ -37,7 +37,7 @@ function SanctuaryRouter() {
 }
 
 function App() {
-  const { isSitePasswordVerified, isChecking, verifySitePassword, refreshStatus } = useSitePassword();
+  const { isSitePasswordVerified, isChecking, verifySitePassword, refreshStatus, recheckStatus } = useSitePassword();
 
   // Check if user is trying to access sanctuary routes
   const currentPath = window.location.pathname;
@@ -47,10 +47,11 @@ function App() {
 
   // Force refresh site password status when accessing sanctuary routes
   useEffect(() => {
-    if (isSanctuaryRoute && !isSitePasswordVerified) {
-      refreshStatus();
+    if (isSanctuaryRoute) {
+      // Always recheck status when accessing sanctuary routes to ensure fresh data
+      recheckStatus();
     }
-  }, [isSanctuaryRoute, isSitePasswordVerified, refreshStatus]);
+  }, [isSanctuaryRoute, recheckStatus]);
 
   // Show nothing while checking site password verification status
   if (isChecking) {
