@@ -130,7 +130,19 @@ export default function EudoxiaPublic() {
         },
         body: JSON.stringify({ content, sessionId })
       });
-      return response.json();
+      
+      const data = await response.json();
+      
+      // Handle 429 (limit reached) and other errors properly
+      if (!response.ok) {
+        if (response.status === 429) {
+          // Force refresh limit status to trigger modal
+          queryClient.invalidateQueries({ queryKey: ["/api/eudoxia/public/limit-status", sessionId] });
+        }
+        throw new Error(data.error || 'Failed to send message');
+      }
+      
+      return data;
     },
     onSuccess: (response) => {
       // Add user message
@@ -158,11 +170,8 @@ export default function EudoxiaPublic() {
     onError: (error) => {
       console.error("Failed to send message:", error);
       
-      // Check if it's a 429 error (limit reached)
-      if (error instanceof Error && error.message.includes('429')) {
-        // Force refresh limit status to show the modal
-        queryClient.invalidateQueries({ queryKey: ["/api/eudoxia/public/limit-status", sessionId] });
-      }
+      // Don't add messages to chat on error - let the modal handle it
+      // The limit status will be refreshed automatically from mutationFn
     }
   });
 
