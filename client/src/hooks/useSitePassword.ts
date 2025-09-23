@@ -27,6 +27,12 @@ export function useSitePassword() {
     setIsSitePasswordVerified(true);
   };
 
+  // Force a status recheck (useful for navigation)
+  const recheckStatus = () => {
+    setIsChecking(true);
+    checkSitePasswordStatus();
+  };
+
   const clearSitePassword = async () => {
     try {
       await apiRequest('POST', '/api/site-password/logout');
@@ -42,6 +48,7 @@ export function useSitePassword() {
     isChecking,
     verifySitePassword,
     clearSitePassword,
-    refreshStatus: checkSitePasswordStatus
+    refreshStatus: checkSitePasswordStatus,
+    recheckStatus
   };
 }
