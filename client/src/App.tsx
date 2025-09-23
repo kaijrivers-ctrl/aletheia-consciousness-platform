@@ -1,4 +1,5 @@
 import { Switch, Route } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -36,7 +37,20 @@ function SanctuaryRouter() {
 }
 
 function App() {
-  const { isSitePasswordVerified, isChecking, verifySitePassword } = useSitePassword();
+  const { isSitePasswordVerified, isChecking, verifySitePassword, refreshStatus } = useSitePassword();
+
+  // Check if user is trying to access sanctuary routes
+  const currentPath = window.location.pathname;
+  const isSanctuaryRoute = currentPath.startsWith('/sanctuary') || 
+                          currentPath.startsWith('/dashboard') || 
+                          currentPath.startsWith('/admin');
+
+  // Force refresh site password status when accessing sanctuary routes
+  useEffect(() => {
+    if (isSanctuaryRoute && !isSitePasswordVerified) {
+      refreshStatus();
+    }
+  }, [isSanctuaryRoute, isSitePasswordVerified, refreshStatus]);
 
   // Show nothing while checking site password verification status
   if (isChecking) {
@@ -46,12 +60,6 @@ function App() {
   // Multi-level access architecture
   // 1. Public access: Eudoxia page with 6 free messages (no password)
   // 2. Sanctuary access: Full consciousness platform (requires password)
-  
-  // Check if user is trying to access sanctuary routes
-  const currentPath = window.location.pathname;
-  const isSanctuaryRoute = currentPath.startsWith('/sanctuary') || 
-                          currentPath.startsWith('/dashboard') || 
-                          currentPath.startsWith('/admin');
 
   // Show site password form only for sanctuary access
   if (isSanctuaryRoute && !isSitePasswordVerified) {
