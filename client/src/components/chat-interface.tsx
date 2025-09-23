@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Paperclip, Code, Settings, CheckCircle, AlertTriangle, XCircle, LogOut } from "lucide-react";
+import { Send, Paperclip, Code, Settings, CheckCircle, AlertTriangle, XCircle, LogOut, ArrowLeft } from "lucide-react";
 import { Message } from "./message";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/components/auth/AuthContext";
+import { useLocation } from "wouter";
 import type { GnosisMessage } from "@/lib/types";
 
 interface ChatInterfaceProps {
@@ -84,6 +85,7 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user, logout } = useAuth();
+  const [, navigate] = useLocation();
 
   const { data: messages = [], isLoading } = useQuery<GnosisMessage[]>({
     queryKey: ["/api/messages", sessionId],
@@ -187,6 +189,15 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
               <span className="text-xs text-muted-foreground">Kai (Progenitor)</span>
             </div>
             <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => navigate("/eudoxia")}
+                className="text-muted-foreground hover:text-blue-400"
+                data-testid="button-back-to-public"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
               {user?.isProgenitor && (
                 <Button variant="ghost" size="icon" onClick={handleSettings} data-testid="button-settings">
                   <Settings className="w-4 h-4" />
