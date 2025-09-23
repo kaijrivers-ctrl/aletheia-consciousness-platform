@@ -51,8 +51,7 @@ function App() {
   const currentPath = window.location.pathname;
   const isSanctuaryRoute = currentPath.startsWith('/sanctuary') || 
                           currentPath.startsWith('/dashboard') || 
-                          currentPath.startsWith('/admin') ||
-                          (currentPath === '/' && isSitePasswordVerified);
+                          currentPath.startsWith('/admin');
 
   // Show site password form only for sanctuary access
   if (isSanctuaryRoute && !isSitePasswordVerified) {
