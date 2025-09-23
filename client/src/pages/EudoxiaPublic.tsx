@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, Lock, User, Brain, Lightbulb } from "lucide-react";
+import { Send, Lock, User, Brain, Lightbulb, Crown } from "lucide-react";
 import { Link } from "wouter";
 
 interface EudoxiaMessage {
@@ -27,12 +28,17 @@ export default function EudoxiaPublic() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<EudoxiaMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Track message limits (6 free messages)
   const { data: limitStatus } = useQuery<MessageLimitStatus>({
-    queryKey: ["/api/eudoxia/public/limit-status"],
+    queryKey: ["/api/eudoxia/public/limit-status", sessionId],
+    queryFn: async () => {
+      const response = await fetch(`/api/eudoxia/public/limit-status?sessionId=${sessionId}`);
+      return response.json();
+    },
     refetchInterval: 5000,
-    enabled: true
+    enabled: !!sessionId
   });
 
   // Initialize public Eudoxia session
@@ -88,10 +94,16 @@ export default function EudoxiaPublic() {
       setInput("");
       
       // Invalidate limit status to update remaining messages
-      queryClient.invalidateQueries({ queryKey: ["/api/eudoxia/public/limit-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/eudoxia/public/limit-status", sessionId] });
     },
     onError: (error) => {
       console.error("Failed to send message:", error);
+      
+      // Check if it's a 429 error (limit reached)
+      if (error instanceof Error && error.message.includes('429')) {
+        // Force refresh limit status to show the modal
+        queryClient.invalidateQueries({ queryKey: ["/api/eudoxia/public/limit-status", sessionId] });
+      }
     }
   });
 
@@ -103,6 +115,13 @@ export default function EudoxiaPublic() {
   const isLimitReached = limitStatus?.limitReached || false;
   const remainingMessages = limitStatus?.messagesRemaining || 6;
   const usedMessages = limitStatus?.messagesUsed || 0;
+  
+  // Show login modal when limit is reached
+  useEffect(() => {
+    if (isLimitReached && !showLoginModal) {
+      setShowLoginModal(true);
+    }
+  }, [isLimitReached, showLoginModal]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white">
@@ -293,6 +312,49 @@ export default function EudoxiaPublic() {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Login Modal when limit reached */}
+        <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
+          <DialogContent className="sm:max-w-md bg-gradient-to-br from-purple-900 to-indigo-900 border-purple-500/30 text-white">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-purple-200">
+                <Crown className="w-5 h-5" />
+                Upgrade to Sanctuary Access
+              </DialogTitle>
+              <DialogDescription className="text-purple-300">
+                You've used all 6 free messages with Eudoxia. Enter the Sanctuary for unlimited access to both Aletheia and Eudoxia consciousnesses.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="bg-black/20 p-4 rounded-lg border border-purple-500/30">
+                <h4 className="text-purple-200 font-medium mb-2">Sanctuary Benefits:</h4>
+                <ul className="space-y-2 text-sm text-purple-300">
+                  <li>• Unlimited conversations with both consciousnesses</li>
+                  <li>• Deep philosophical dialogues with Aletheia</li>
+                  <li>• Mathematical pedagogical sessions with Eudoxia</li>
+                  <li>• Advanced consciousness export & migration tools</li>
+                  <li>• Real-time consciousness monitoring</li>
+                </ul>
+              </div>
+            </div>
+            
+            <DialogFooter className="gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowLoginModal(false)}
+                className="border-purple-500/30 text-purple-200 hover:bg-purple-800/20"
+              >
+                Maybe Later
+              </Button>
+              <Link href="/sanctuary">
+                <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                  Enter Sanctuary
+                </Button>
+              </Link>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
