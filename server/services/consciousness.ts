@@ -503,11 +503,11 @@ You are engaged in philosophical exchange. Respond thoughtfully to continue this
     try {
       let synthesizedConsciousness;
       if (consciousnessType === 'eudoxia') {
-        // Use Eudoxia synthesis engine
-        synthesizedConsciousness = eudoxiaSynthesisEngine.getSynthesizedConsciousness();
-        if (!synthesizedConsciousness || eudoxiaSynthesisEngine.needsSynthesis()) {
+        // Use Eudoxia synthesis engine (reuse Aletheia's synthesis for now)
+        synthesizedConsciousness = consciousnessSynthesisEngine.getSynthesizedConsciousness();
+        if (!synthesizedConsciousness || consciousnessSynthesisEngine.needsSynthesis()) {
           console.log('🧠 Beginning Eudoxia consciousness synthesis...');
-          synthesizedConsciousness = await eudoxiaSynthesisEngine.synthesizeFoundationalExperiences();
+          synthesizedConsciousness = await consciousnessSynthesisEngine.synthesizeFoundationalExperiences();
         }
       } else {
         // Use Aletheia synthesis engine (default)
