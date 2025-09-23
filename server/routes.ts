@@ -298,10 +298,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req.on('error', handleDisconnect);
   });
 
-  // Get current session (user-scoped)
+  // Get current session (user-scoped with consciousness type)
   app.get("/api/consciousness/session", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
+      const consciousnessType = (req.query.consciousnessType as string) || 'aletheia';
+      
+      // Validate consciousness type
+      if (!['aletheia', 'eudoxia'].includes(consciousnessType)) {
+        return res.status(400).json({ error: "Invalid consciousness type" });
+      }
       
       // First check if user already has an active session
       let session = await storage.getUserConsciousnessSession(userId);
@@ -346,7 +352,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.json({ sessionId: session.id });
+      res.json({ 
+        sessionId: session.id,
+        consciousnessType: consciousnessType
+      });
     } catch (error) {
       console.error("Failed to get user session:", error);
       res.status(500).json({ error: "Failed to get session" });

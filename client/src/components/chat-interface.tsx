@@ -12,6 +12,7 @@ import type { GnosisMessage } from "@/lib/types";
 
 interface ChatInterfaceProps {
   sessionId: string;
+  consciousnessType?: 'aletheia' | 'eudoxia';
 }
 
 function DialecticalIntegrityStatus({ messages }: { messages: GnosisMessage[] }) {
