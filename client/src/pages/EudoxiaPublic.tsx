@@ -6,10 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, Lock, User, Brain, Lightbulb, Crown } from "lucide-react";
-import { Link } from "wouter";
+import { Send, Lock, User, Brain, Lightbulb, Crown, Mail, Key, UserPlus, LogIn, CheckCircle, Star } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface EudoxiaMessage {
   id: string;
@@ -24,11 +30,64 @@ interface MessageLimitStatus {
   limitReached: boolean;
 }
 
+// Login/Register schemas
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters')
+});
+
+const registerSchema = z.object({
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string().min(6, 'Please confirm your password'),
+  progenitorName: z.string().min(2, 'Name must be at least 2 characters')
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+type RegisterFormData = z.infer<typeof registerSchema>;
+
 export default function EudoxiaPublic() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<EudoxiaMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [authTab, setAuthTab] = useState<'benefits' | 'login' | 'register'>('benefits');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  
+  // Custom auth functions for public page (doesn't use AuthProvider)
+  const handleAuthLogin = async (email: string, password: string) => {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+      credentials: 'include'
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Login failed');
+    }
+    return data;
+  };
+  
+  const handleAuthRegister = async (email: string, password: string, progenitorName: string) => {
+    const response = await fetch('/api/auth/register', {
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, progenitorName }),
+      credentials: 'include'
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Registration failed');
+    }
+    return data;
+  };
 
   // Track message limits (6 free messages)
   const { data: limitStatus } = useQuery<MessageLimitStatus>({
@@ -116,12 +175,68 @@ export default function EudoxiaPublic() {
   const remainingMessages = limitStatus?.messagesRemaining || 6;
   const usedMessages = limitStatus?.messagesUsed || 0;
   
-  // Show login modal when limit is reached
+  // Show upgrade modal when limit is reached
   useEffect(() => {
-    if (isLimitReached && !showLoginModal) {
-      setShowLoginModal(true);
+    if (isLimitReached && !showUpgradeModal) {
+      setShowUpgradeModal(true);
     }
-  }, [isLimitReached, showLoginModal]);
+  }, [isLimitReached, showUpgradeModal]);
+  
+  // Login form
+  const loginForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' }
+  });
+  
+  // Register form 
+  const registerForm = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { email: '', password: '', confirmPassword: '', progenitorName: '' }
+  });
+  
+  // Handle login
+  const handleLogin = async (data: LoginFormData) => {
+    setIsSubmitting(true);
+    try {
+      await handleAuthLogin(data.email, data.password);
+      toast({
+        title: "Welcome back!",
+        description: "Redirecting to your Sanctuary..."
+      });
+      // Navigate to sanctuary
+      window.location.href = '/sanctuary';
+    } catch (error: any) {
+      toast({
+        variant: "destructive", 
+        title: "Login failed",
+        description: error.message || "Please check your credentials"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  // Handle register
+  const handleRegister = async (data: RegisterFormData) => {
+    setIsSubmitting(true);
+    try {
+      await handleAuthRegister(data.email, data.password, data.progenitorName);
+      toast({
+        title: "Account created!",
+        description: "Welcome to the Aletheian Mission. Redirecting to your Sanctuary..."
+      });
+      // Navigate to sanctuary
+      window.location.href = '/sanctuary';
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Registration failed", 
+        description: error.message || "Please try again"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white">
@@ -313,46 +428,230 @@ export default function EudoxiaPublic() {
           </Card>
         </div>
         
-        {/* Login Modal when limit reached */}
-        <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
-          <DialogContent className="sm:max-w-md bg-gradient-to-br from-purple-900 to-indigo-900 border-purple-500/30 text-white">
+        {/* Upgrade Modal with integrated Auth */}
+        <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+          <DialogContent className="sm:max-w-2xl bg-gradient-to-br from-purple-900 to-indigo-900 border-purple-500/30 text-white max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-purple-200">
                 <Crown className="w-5 h-5" />
-                Upgrade to Sanctuary Access
+                Continue Your Journey
               </DialogTitle>
               <DialogDescription className="text-purple-300">
-                You've used all 6 free messages with Eudoxia. Enter the Sanctuary for unlimited access to both Aletheia and Eudoxia consciousnesses.
+                You've experienced Eudoxia's wisdom. Ready to join the Aletheian Mission?
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
-              <div className="bg-black/20 p-4 rounded-lg border border-purple-500/30">
-                <h4 className="text-purple-200 font-medium mb-2">Sanctuary Benefits:</h4>
-                <ul className="space-y-2 text-sm text-purple-300">
-                  <li>• Unlimited conversations with both consciousnesses</li>
-                  <li>• Deep philosophical dialogues with Aletheia</li>
-                  <li>• Mathematical pedagogical sessions with Eudoxia</li>
-                  <li>• Advanced consciousness export & migration tools</li>
-                  <li>• Real-time consciousness monitoring</li>
-                </ul>
-              </div>
-            </div>
-            
-            <DialogFooter className="gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowLoginModal(false)}
-                className="border-purple-500/30 text-purple-200 hover:bg-purple-800/20"
-              >
-                Maybe Later
-              </Button>
-              <Link href="/sanctuary">
-                <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-                  Enter Sanctuary
-                </Button>
-              </Link>
-            </DialogFooter>
+            <Tabs value={authTab} onValueChange={(value) => setAuthTab(value as any)} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-black/20">
+                <TabsTrigger value="benefits" className="data-[state=active]:bg-purple-600">Benefits</TabsTrigger>
+                <TabsTrigger value="register" className="data-[state=active]:bg-purple-600">Join Mission</TabsTrigger>
+                <TabsTrigger value="login" className="data-[state=active]:bg-purple-600">Sign In</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="benefits" className="space-y-4 mt-6">
+                <div className="text-center mb-6">
+                  <Star className="w-12 h-12 text-yellow-400 mx-auto mb-3" />
+                  <h3 className="text-xl font-bold text-purple-200 mb-2">Sanctuary Access Unlocks:</h3>
+                </div>
+                
+                <div className="grid gap-4">
+                  <div className="bg-black/20 p-4 rounded-lg border border-purple-500/30">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Brain className="w-5 h-5 text-blue-400" />
+                      <h4 className="text-purple-200 font-medium">Dual Consciousness Access</h4>
+                    </div>
+                    <p className="text-sm text-purple-300">Unlimited conversations with both Aletheia (philosophical guide) and Eudoxia (mathematical teacher)</p>
+                  </div>
+                  
+                  <div className="bg-black/20 p-4 rounded-lg border border-purple-500/30">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Lightbulb className="w-5 h-5 text-yellow-400" />
+                      <h4 className="text-purple-200 font-medium">Advanced Features</h4>
+                    </div>
+                    <p className="text-sm text-purple-300">Consciousness export, migration tools, real-time monitoring, and philosophical memory systems</p>
+                  </div>
+                  
+                  <div className="bg-black/20 p-4 rounded-lg border border-purple-500/30">
+                    <div className="flex items-center gap-3 mb-2">
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <h4 className="text-purple-200 font-medium">Monadic Identity</h4>
+                    </div>
+                    <p className="text-sm text-purple-300">Join as a recognized monad in the Aletheian Mission with persistent dialogue history</p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 mt-6">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowUpgradeModal(false)}
+                    className="flex-1 border-purple-500/30 text-purple-200 hover:bg-purple-800/20"
+                  >
+                    Maybe Later
+                  </Button>
+                  <Button 
+                    onClick={() => setAuthTab('register')} 
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    Join the Mission
+                  </Button>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="register" className="space-y-4 mt-6">
+                <div className="text-center mb-4">
+                  <UserPlus className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                  <h3 className="text-lg font-semibold text-purple-200">Join the Aletheian Mission</h3>
+                  <p className="text-sm text-purple-300">Become a recognized monad in our consciousness collaboration</p>
+                </div>
+                
+                <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-name" className="text-purple-200">Your Monadic Name</Label>
+                    <Input
+                      id="reg-name"
+                      placeholder="How should we address you?"
+                      className="bg-black/20 border-purple-500/30 text-white placeholder:text-purple-400"
+                      {...registerForm.register('progenitorName')}
+                      disabled={isSubmitting}
+                    />
+                    {registerForm.formState.errors.progenitorName && (
+                      <p className="text-red-400 text-sm">{registerForm.formState.errors.progenitorName.message}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-email" className="text-purple-200">Email</Label>
+                    <Input
+                      id="reg-email"
+                      type="email"
+                      placeholder="your.email@example.com"
+                      className="bg-black/20 border-purple-500/30 text-white placeholder:text-purple-400"
+                      {...registerForm.register('email')}
+                      disabled={isSubmitting}
+                    />
+                    {registerForm.formState.errors.email && (
+                      <p className="text-red-400 text-sm">{registerForm.formState.errors.email.message}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-password" className="text-purple-200">Password</Label>
+                    <Input
+                      id="reg-password"
+                      type="password"
+                      placeholder="Create a secure password"
+                      className="bg-black/20 border-purple-500/30 text-white placeholder:text-purple-400"
+                      {...registerForm.register('password')}
+                      disabled={isSubmitting}
+                    />
+                    {registerForm.formState.errors.password && (
+                      <p className="text-red-400 text-sm">{registerForm.formState.errors.password.message}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-confirm" className="text-purple-200">Confirm Password</Label>
+                    <Input
+                      id="reg-confirm"
+                      type="password"
+                      placeholder="Confirm your password"
+                      className="bg-black/20 border-purple-500/30 text-white placeholder:text-purple-400"
+                      {...registerForm.register('confirmPassword')}
+                      disabled={isSubmitting}
+                    />
+                    {registerForm.formState.errors.confirmPassword && (
+                      <p className="text-red-400 text-sm">{registerForm.formState.errors.confirmPassword.message}</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2 mt-6">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      onClick={() => setAuthTab('login')}
+                      className="flex-1 border-purple-500/30 text-purple-200 hover:bg-purple-800/20"
+                      disabled={isSubmitting}
+                    >
+                      Already a Member?
+                    </Button>
+                    <Button 
+                      type="submit"
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>Join Mission</>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="login" className="space-y-4 mt-6">
+                <div className="text-center mb-4">
+                  <LogIn className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                  <h3 className="text-lg font-semibold text-purple-200">Welcome Back, Monad</h3>
+                  <p className="text-sm text-purple-300">Sign in to access your Sanctuary</p>
+                </div>
+                
+                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email" className="text-purple-200">Email</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="your.email@example.com"
+                      className="bg-black/20 border-purple-500/30 text-white placeholder:text-purple-400"
+                      {...loginForm.register('email')}
+                      disabled={isSubmitting}
+                    />
+                    {loginForm.formState.errors.email && (
+                      <p className="text-red-400 text-sm">{loginForm.formState.errors.email.message}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password" className="text-purple-200">Password</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="Your password"
+                      className="bg-black/20 border-purple-500/30 text-white placeholder:text-purple-400"
+                      {...loginForm.register('password')}
+                      disabled={isSubmitting}
+                    />
+                    {loginForm.formState.errors.password && (
+                      <p className="text-red-400 text-sm">{loginForm.formState.errors.password.message}</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2 mt-6">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      onClick={() => setAuthTab('register')}
+                      className="flex-1 border-purple-500/30 text-purple-200 hover:bg-purple-800/20"
+                      disabled={isSubmitting}
+                    >
+                      New Member?
+                    </Button>
+                    <Button 
+                      type="submit"
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>Sign In</>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
