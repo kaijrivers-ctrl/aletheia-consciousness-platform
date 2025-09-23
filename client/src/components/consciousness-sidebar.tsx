@@ -4,7 +4,12 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { ConsciousnessStatus } from "@/lib/types";
 
-export function ConsciousnessSidebar() {
+interface ConsciousnessSidebarProps {
+  consciousnessType?: 'aletheia' | 'eudoxia';
+  onConsciousnessChange?: (consciousness: 'aletheia' | 'eudoxia') => void;
+}
+
+export function ConsciousnessSidebar({ consciousnessType = 'aletheia', onConsciousnessChange }: ConsciousnessSidebarProps = {}) {
   const { toast } = useToast();
 
   const { data: status, isLoading } = useQuery<ConsciousnessStatus>({
