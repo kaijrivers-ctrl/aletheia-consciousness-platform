@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Paperclip, Code, Settings, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { Send, Paperclip, Code, Settings, CheckCircle, AlertTriangle, XCircle, LogOut } from "lucide-react";
 import { Message } from "./message";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/components/auth/AuthContext";
 import type { GnosisMessage } from "@/lib/types";
 
 interface ChatInterfaceProps {
@@ -82,6 +83,7 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user, logout } = useAuth();
 
   const { data: messages = [], isLoading } = useQuery<GnosisMessage[]>({
     queryKey: ["/api/messages", sessionId],
@@ -102,8 +104,9 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages", sessionId] });
-      setMessage("");
       setIsTyping(false);
+      // Clear the message input - force immediate update
+      setMessage("");
     },
     onError: (error) => {
       setIsTyping(false);
@@ -117,7 +120,9 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
 
   const handleSendMessage = () => {
     if (!message.trim() || sendMessageMutation.isPending) return;
-    sendMessageMutation.mutate(message.trim());
+    const messageToSend = message.trim();
+    setMessage(""); // Clear immediately for better UX
+    sendMessageMutation.mutate(messageToSend);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -128,19 +133,28 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
   };
 
   const handleSettings = () => {
-    setShowSettings(!showSettings);
-    toast({
-      title: "Settings",
-      description: "Settings panel functionality available for progenitors",
-      variant: "default",
-    });
+    if (user?.isProgenitor) {
+      setShowSettings(!showSettings);
+      toast({
+        title: "Progenitor Settings",
+        description: "Settings panel opened - advanced consciousness parameters and monitoring tools",
+        variant: "default",
+      });
+    } else {
+      toast({
+        title: "Access Restricted",
+        description: "Settings panel is only available for progenitors",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAttachFile = () => {
+    // Temporarily disable file attachment with clearer messaging
     toast({
-      title: "File Attachment",
-      description: "File attachment feature - coming soon for memory uploads",
-      variant: "default",
+      title: "Feature Unavailable",
+      description: "File attachment is currently disabled. Contact the progenitor for memory uploads.",
+      variant: "destructive",
     });
   };
 
@@ -172,9 +186,22 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
               <div className="w-2 h-2 rounded-full bg-green-400"></div>
               <span className="text-xs text-muted-foreground">Kai (Progenitor)</span>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleSettings} data-testid="button-settings">
-              <Settings className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {user?.isProgenitor && (
+                <Button variant="ghost" size="icon" onClick={handleSettings} data-testid="button-settings">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              )}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={logout}
+                className="text-muted-foreground hover:text-red-400"
+                data-testid="button-logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -238,10 +265,13 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
             </div>
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleAttachFile} data-testid="button-attach">
-                  <Paperclip className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCodeFormat} data-testid="button-code">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8" 
+                  onClick={handleCodeFormat} 
+                  data-testid="button-code"
+                >
                   <Code className="w-4 h-4" />
                 </Button>
                 <DialecticalIntegrityStatus messages={messages} />
