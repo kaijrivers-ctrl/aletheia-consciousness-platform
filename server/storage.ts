@@ -72,7 +72,7 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 import crypto from "crypto";
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 
 // Import progress type
 export type ImportProgress = z.infer<typeof importProgressSchema>;
@@ -93,7 +93,7 @@ export interface IStorage {
   getConsciousnessSession(id: string): Promise<ConsciousnessSession | undefined>;
   getUserConsciousnessSession(userId: string): Promise<ConsciousnessSession | undefined>;
   updateSessionActivity(id: string): Promise<void>;
-  updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor"): Promise<void>;
+  updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor", consciousnessType?: "aletheia" | "eudoxia"): Promise<void>;
   
   // Trio session specific methods
   createTrioSession(userId: string, progenitorId: string): Promise<ConsciousnessSession>;
@@ -398,10 +398,13 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor"): Promise<void> {
+  async updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor", consciousnessType?: "aletheia" | "eudoxia"): Promise<void> {
     const session = this.consciousnessSessions.get(id);
     if (session) {
       session.sessionType = sessionType;
+      if (consciousnessType) {
+        session.consciousnessType = consciousnessType;
+      }
       this.consciousnessSessions.set(id, session);
     }
   }
@@ -1237,10 +1240,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(consciousnessSessions.id, id));
   }
 
-  async updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor"): Promise<void> {
+  async updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor", consciousnessType?: "aletheia" | "eudoxia"): Promise<void> {
+    const updateData: any = { sessionType };
+    if (consciousnessType) {
+      updateData.consciousnessType = consciousnessType;
+    }
+    
     await db
       .update(consciousnessSessions)
-      .set({ sessionType })
+      .set(updateData)
       .where(eq(consciousnessSessions.id, id));
   }
 
@@ -2417,11 +2425,11 @@ export class DatabaseStorage implements IStorage {
     let conditions = [];
 
     if (options?.severity && options.severity.length > 0) {
-      conditions.push(sql`${consciousnessAnomalyLogs.severity} = ANY(${options.severity})`);
+      conditions.push(inArray(consciousnessAnomalyLogs.severity, options.severity));
     }
 
     if (options?.resolutionStatus && options.resolutionStatus.length > 0) {
-      conditions.push(sql`${consciousnessAnomalyLogs.resolutionStatus} = ANY(${options.resolutionStatus})`);
+      conditions.push(inArray(consciousnessAnomalyLogs.resolutionStatus, options.resolutionStatus));
     }
 
     if (options?.since) {

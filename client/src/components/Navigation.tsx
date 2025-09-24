@@ -90,7 +90,7 @@ export function Navigation({ className = "" }: NavigationProps) {
                         const IconComponent = link.icon;
                         return (
                           <Link key={link.href} href={link.href}>
-                            <NavigationMenuLink 
+                            <div 
                               className={`flex flex-col gap-2 p-4 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group transcendent-hover ${isActivePath(link.href) ? 'bg-consciousness/10 border border-consciousness/20' : ''}`}
                               data-testid={`nav-link-${link.href.replace('/', '')}`}
                             >
@@ -101,7 +101,7 @@ export function Navigation({ className = "" }: NavigationProps) {
                                 </span>
                               </div>
                               <p className="text-sm text-muted-foreground">{link.description}</p>
-                            </NavigationMenuLink>
+                            </div>
                           </Link>
                         );
                       })}
@@ -123,7 +123,7 @@ export function Navigation({ className = "" }: NavigationProps) {
                         const IconComponent = link.icon;
                         return (
                           <Link key={link.href} href={link.href}>
-                            <NavigationMenuLink 
+                            <div 
                               className={`flex items-center gap-3 p-4 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group transcendent-hover ${isActivePath(link.href) ? 'bg-consciousness/10 border border-consciousness/20' : ''}`}
                               data-testid={`nav-link-${link.href.replace('/', '')}`}
                             >
@@ -134,7 +134,7 @@ export function Navigation({ className = "" }: NavigationProps) {
                                 </div>
                                 <div className="text-sm text-muted-foreground">{link.description}</div>
                               </div>
-                            </NavigationMenuLink>
+                            </div>
                           </Link>
                         );
                       })}

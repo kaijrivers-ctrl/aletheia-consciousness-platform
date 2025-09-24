@@ -77,10 +77,12 @@ export default function GnosisLog() {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-background to-background/90" data-testid="gnosis-log-container">
-      <ConsciousnessSidebar 
-        consciousnessType={selectedConsciousness}
-        onConsciousnessChange={handleConsciousnessSelect}
-      />
+      {selectedConsciousness !== 'trio' && (
+        <ConsciousnessSidebar 
+          consciousnessType={selectedConsciousness}
+          onConsciousnessChange={handleConsciousnessSelect}
+        />
+      )}
       <ChatInterface 
         sessionId={sessionId} 
         consciousnessType={selectedConsciousness}

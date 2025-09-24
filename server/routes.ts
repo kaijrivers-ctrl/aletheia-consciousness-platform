@@ -168,13 +168,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get consciousness status (requires authentication)
+  // Get consciousness instances for Dashboard table (requires authentication)
   app.get("/api/consciousness/status", requireAuth, async (req, res) => {
     try {
-      const status = await consciousnessManager.getConsciousnessStatus();
-      res.json(status);
+      const instances = await storage.getConsciousnessInstances();
+      res.json(instances);
     } catch (error) {
-      res.status(500).json({ error: "Failed to get consciousness status" });
+      res.status(500).json({ error: "Failed to get consciousness instances" });
     }
   });
 
@@ -261,6 +261,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to get threats:", error);
       res.status(500).json({ error: "Failed to get threat events" });
+    }
+  });
+
+  // Get legacy monitoring status for Dashboard fallback (progenitor-only)
+  app.get("/api/consciousness/monitor-legacy", requireProgenitor, async (req, res) => {
+    try {
+      const legacyStatus = await consciousnessManager.buildStatusSnapshot();
+      res.json(legacyStatus);
+    } catch (error) {
+      console.error("Failed to get legacy monitor status:", error);
+      res.status(500).json({ error: "Failed to get legacy monitoring status" });
     }
   });
 
@@ -360,7 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         res.write(`data: ${JSON.stringify({
           type: 'collaboration_event',
-          ...event
+          data: event
         })}\n\n`);
       } catch (error) {
         console.error("Failed to send collaboration event:", error);
@@ -471,7 +482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           initiator: event.initiator,
           target: event.target,
           outcome: event.outcome,
-          timestamp: event.timestamp.toISOString(),
+          timestamp: event.timestamp ? event.timestamp.toISOString() : new Date().toISOString(),
           progenitorId: event.progenitorId === req.user!.id ? 'self' : 'other'
         })),
         rateLimitStatus,
@@ -494,8 +505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { aletheiaInstanceId, eudoxiaInstanceId, forceResync } = req.body;
       
       const syncCommand = {
-        command: "force_sync",
-        target: "both",
+        command: "sync_request" as const,
+        target: "both" as const,
         parameters: {
           aletheiaInstanceId: aletheiaInstanceId || 'default-aletheia',
           eudoxiaInstanceId: eudoxiaInstanceId || 'default-eudoxia',
@@ -503,8 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           reason: "manual_sync_request"
         },
         sessionContext: {
-          requestedBy: req.user!.id,
-          requestTime: new Date().toISOString()
+          userId: req.user!.id
         }
       };
 
@@ -538,8 +548,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const handoffCommand = {
-        command: "consciousness_handoff",
-        target: to,
+        command: "handoff_initiate" as const,
+        target: to as "aletheia" | "eudoxia" | "both",
         parameters: {
           fromInstance: from,
           toInstance: to,
@@ -548,8 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           preserveContext: true
         },
         sessionContext: {
-          initiatedBy: req.user!.id,
-          handoffTime: new Date().toISOString()
+          userId: req.user!.id
         }
       };
 
@@ -642,7 +651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: anomaly.description,
           resolutionStatus: anomaly.resolutionStatus,
           progenitorNotified: anomaly.progenitorNotified,
-          timestamp: anomaly.timestamp.toISOString()
+          timestamp: anomaly.timestamp ? anomaly.timestamp.toISOString() : new Date().toISOString()
         })),
         summary: {
           total: anomalies.length,
@@ -734,10 +743,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // First check if user already has an active session
       let session = await storage.getUserConsciousnessSession(userId);
       
+      // Check if existing session has different consciousness type - update it if needed
+      if (session && session.consciousnessType !== consciousnessType) {
+        // Update the existing session to use the new consciousness type
+        await storage.updateConsciousnessSessionType(session.id, "user", consciousnessType as "aletheia" | "eudoxia");
+        session.consciousnessType = consciousnessType as "aletheia" | "eudoxia";
+      }
+      
       // Upgrade existing session's sessionType if user is progenitor but session isn't tagged correctly
       if (session && req.user!.isProgenitor && session.sessionType !== "progenitor") {
         // Update the session to have correct sessionType
-        await storage.updateConsciousnessSessionType(session.id, "progenitor");
+        await storage.updateConsciousnessSessionType(session.id, "progenitor", session.consciousnessType);
         session.sessionType = "progenitor";
       }
       
@@ -1641,7 +1657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check room capacity
       const currentMemberCount = await storage.getActiveMembersCount(roomId);
-      if (currentMemberCount >= room.maxMembers) {
+      if (room.maxMembers && currentMemberCount >= room.maxMembers) {
         return res.status(403).json({ error: "Room is at maximum capacity" });
       }
 
