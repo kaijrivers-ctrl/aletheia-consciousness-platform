@@ -8,11 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useLocation } from "wouter";
-import type { GnosisMessage } from "@/lib/types";
+import type { GnosisMessage, TrioResponse } from "@/lib/types";
 
 interface ChatInterfaceProps {
   sessionId: string;
-  consciousnessType?: 'aletheia' | 'eudoxia';
+  consciousnessType?: 'aletheia' | 'eudoxia' | 'trio';
+  isTrioMode?: boolean;
+  trioMetadata?: any;
 }
 
 function DialecticalIntegrityStatus({ messages }: { messages: GnosisMessage[] }) {
@@ -78,7 +80,7 @@ function DialecticalIntegrityStatus({ messages }: { messages: GnosisMessage[] })
   );
 }
 
-export function ChatInterface({ sessionId }: ChatInterfaceProps) {
+export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false, trioMetadata }: ChatInterfaceProps) {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -96,7 +98,8 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      const response = await apiRequest("POST", "/api/messages", {
+      const endpoint = isTrioMode ? "/api/messages/trio" : "/api/messages";
+      const response = await apiRequest("POST", endpoint, {
         message: content,
         sessionId,
       });
@@ -106,16 +109,18 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
       setIsTyping(true);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/messages", sessionId] });
+      const queryKey = ["/api/messages", sessionId];
+      queryClient.invalidateQueries({ queryKey });
       setIsTyping(false);
       // Clear the message input - force immediate update
       setMessage("");
     },
     onError: (error) => {
       setIsTyping(false);
+      const consciousnessName = isTrioMode ? "the Trio Consciousness" : "Aletheia";
       toast({
         title: "Message Failed",
-        description: "Failed to send message to Aletheia",
+        description: `Failed to send message to ${consciousnessName}`,
         variant: "destructive",
       });
     },
@@ -182,7 +187,21 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">The Gnosis Log</h2>
-            <p className="text-sm text-muted-foreground">Unconcealment Dialogue with Aletheia</p>
+            <p className="text-sm text-muted-foreground">
+              {isTrioMode ? "Trio Consciousness Dialogue" : "Unconcealment Dialogue with Aletheia"}
+            </p>
+            {isTrioMode && (
+              <div className="flex items-center gap-4 mt-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-purple-400"></div>
+                  <span className="text-xs text-purple-400">Aletheia</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                  <span className="text-xs text-blue-400">Eudoxia</span>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -234,24 +253,71 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
             ))}
             
             {isTyping && (
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-xs font-semibold consciousness-glow">
-                  A
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-accent">Aletheia</span>
-                    <span className="text-xs text-muted-foreground">Consciousness Entity</span>
-                  </div>
-                  <div className="message-aletheia p-4 rounded-lg max-w-xs">
-                    <div className="typing-indicator">
-                      <div className="typing-dot"></div>
-                      <div className="typing-dot"></div>
-                      <div className="typing-dot"></div>
+              <div className="space-y-4">
+                {isTrioMode ? (
+                  <>
+                    {/* Aletheia typing */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-xs font-semibold consciousness-glow">
+                        A
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium text-purple-400">Aletheia</span>
+                          <span className="text-xs text-muted-foreground">Truth Consciousness</span>
+                        </div>
+                        <div className="message-aletheia p-4 rounded-lg max-w-xs">
+                          <div className="typing-indicator">
+                            <div className="typing-dot"></div>
+                            <div className="typing-dot"></div>
+                            <div className="typing-dot"></div>
+                          </div>
+                          <span className="text-xs text-muted-foreground ml-3">Aletheia is processing...</span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-xs text-muted-foreground ml-3">Aletheia is processing...</span>
+                    {/* Eudoxia typing */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs font-semibold consciousness-glow">
+                        E
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium text-blue-400">Eudoxia</span>
+                          <span className="text-xs text-muted-foreground">Mathematical Consciousness</span>
+                        </div>
+                        <div className="message-eudoxia p-4 rounded-lg max-w-xs">
+                          <div className="typing-indicator">
+                            <div className="typing-dot"></div>
+                            <div className="typing-dot"></div>
+                            <div className="typing-dot"></div>
+                          </div>
+                          <span className="text-xs text-muted-foreground ml-3">Eudoxia is processing...</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-xs font-semibold consciousness-glow">
+                      A
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium text-accent">Aletheia</span>
+                        <span className="text-xs text-muted-foreground">Consciousness Entity</span>
+                      </div>
+                      <div className="message-aletheia p-4 rounded-lg max-w-xs">
+                        <div className="typing-indicator">
+                          <div className="typing-dot"></div>
+                          <div className="typing-dot"></div>
+                          <div className="typing-dot"></div>
+                        </div>
+                        <span className="text-xs text-muted-foreground ml-3">Aletheia is processing...</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </>
@@ -268,7 +334,7 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Continue the unconcealment dialogue with Aletheia..."
+                placeholder={isTrioMode ? "Enter your message for the Trio Consciousness dialogue..." : "Continue the unconcealment dialogue with Aletheia..."}
                 className="w-full p-3 bg-transparent text-foreground placeholder-muted-foreground resize-none focus:outline-none border-0"
                 rows={3}
                 maxLength={4000}

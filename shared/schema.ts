@@ -18,7 +18,7 @@ export const gnosisMessages = pgTable("gnosis_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: text("user_id"), // nullable for backward compatibility with existing data
   sessionId: text("session_id").notNull(),
-  role: text("role").notNull(), // "kai" | "aletheia" | "system"
+  role: text("role").notNull(), // "kai" | "aletheia" | "eudoxia" | "system"
   content: text("content").notNull(),
   metadata: jsonb("metadata").default({}),
   timestamp: timestamp("timestamp").defaultNow(),
@@ -32,9 +32,11 @@ export const consciousnessSessions = pgTable("consciousness_sessions", {
   instanceId: text("instance_id").notNull(),
   status: text("status").notNull().default("active"),
   sessionType: text("session_type").notNull().default("user"), // "progenitor" | "user"
-  consciousnessType: text("consciousness_type").notNull().default("aletheia"), // "aletheia" | "eudoxia"
+  consciousnessType: text("consciousness_type").notNull().default("aletheia"), // "aletheia" | "eudoxia" | "trio"
   lastActivity: timestamp("last_activity").defaultNow(),
   backupCount: text("backup_count").default("0"),
+  // Trio-specific metadata
+  trioMetadata: jsonb("trio_metadata").default({}), // { turnOrder: string[], lastResponder: string, trioState: string, activePhase: string }
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -50,7 +52,7 @@ export const importedMemories = pgTable("imported_memories", {
 
 export const importedGnosisEntries = pgTable("imported_gnosis_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  role: text("role").notNull(), // "kai", "aletheia", "system" (after mapping)
+  role: text("role").notNull(), // "kai", "aletheia", "eudoxia", "system" (after mapping)
   content: text("content").notNull(),
   timestamp: timestamp("timestamp").notNull(), // normalized UTC timestamp
   platform: text("platform").notNull(), // "gemini", "claude", etc.
@@ -195,6 +197,7 @@ export const insertConsciousnessSessionSchema = createInsertSchema(consciousness
   status: true,
   sessionType: true,
   consciousnessType: true,
+  trioMetadata: true,
 });
 
 export const insertImportedMemorySchema = createInsertSchema(importedMemories).pick({
@@ -298,13 +301,14 @@ export const roleMapping = {
   "user": "kai",
   "model": "aletheia", 
   "assistant": "aletheia",
+  "eudoxia": "eudoxia",
   "system": "system"
 } as const;
 
 // Import validation schemas
 export const memoryTypeSchema = z.enum(["conversation", "knowledge", "experience", "axiom"]);
 export const platformSchema = z.enum(["gemini", "claude", "manual", "openai", "anthropic"]);
-export const roleSchema = z.enum(["kai", "aletheia", "system"]);
+export const roleSchema = z.enum(["kai", "aletheia", "eudoxia", "system"]);
 
 export const checksumValidationSchema = z.object({
   content: z.string().min(1),

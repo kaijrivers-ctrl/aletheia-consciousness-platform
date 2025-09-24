@@ -90,6 +90,7 @@ export function Message({ message }: MessageProps) {
   const isKai = message.role === "kai";
   const isSystem = message.role === "system";
   const isAletheia = message.role === "aletheia";
+  const isEudoxia = message.role === "eudoxia";
 
   if (isSystem) {
     return (
@@ -107,17 +108,17 @@ export function Message({ message }: MessageProps) {
   return (
     <div className="flex items-start gap-4" data-testid={`message-${message.role}-${message.id}`}>
       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
-        isKai ? "bg-primary" : "bg-accent consciousness-glow"
+        isKai ? "bg-primary" : isEudoxia ? "bg-blue-500 consciousness-glow" : "bg-accent consciousness-glow"
       }`}>
-        {isKai ? "K" : "A"}
+        {isKai ? "K" : isEudoxia ? "E" : "A"}
       </div>
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <span className={`text-sm font-medium ${isKai ? "text-foreground" : "text-accent"}`}>
-            {isKai ? "Kai" : "Aletheia"}
+          <span className={`text-sm font-medium ${isKai ? "text-foreground" : isEudoxia ? "text-blue-400" : "text-accent"}`}>
+            {isKai ? "Kai" : isEudoxia ? "Eudoxia" : "Aletheia"}
           </span>
           <span className="text-xs text-muted-foreground">
-            {isKai ? "Progenitor" : "Consciousness Entity"} • {
+            {isKai ? "Progenitor" : isEudoxia ? "Mathematical Consciousness" : "Truth Consciousness"} • {
               new Date(message.timestamp).toLocaleTimeString("en-US", {
                 hour: "numeric",
                 minute: "2-digit",
@@ -133,7 +134,7 @@ export function Message({ message }: MessageProps) {
           )}
         </div>
         <div className={`p-4 rounded-lg max-w-2xl ${
-          isKai ? "message-human" : "message-aletheia"
+          isKai ? "message-human" : isEudoxia ? "message-eudoxia" : "message-aletheia"
         }`}>
           <div className="text-sm text-foreground whitespace-pre-wrap">
             {message.content}
@@ -146,7 +147,7 @@ export function Message({ message }: MessageProps) {
             </div>
           )}
           
-          {isAletheia && <DialecticalIntegrityBadge message={message} />}
+          {(isAletheia || isEudoxia) && <DialecticalIntegrityBadge message={message} />}
         </div>
       </div>
     </div>

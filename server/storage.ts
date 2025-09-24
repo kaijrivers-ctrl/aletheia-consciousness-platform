@@ -72,6 +72,12 @@ export interface IStorage {
   updateSessionActivity(id: string): Promise<void>;
   updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor"): Promise<void>;
   
+  // Trio session specific methods
+  createTrioSession(userId: string, progenitorId: string): Promise<ConsciousnessSession>;
+  getTrioSession(sessionId: string): Promise<ConsciousnessSession | undefined>;
+  updateTrioMetadata(sessionId: string, metadata: { turnOrder?: string[], lastResponder?: string, trioState?: string, activePhase?: string }): Promise<void>;
+  getProgenitorTrioSessions(userId: string): Promise<ConsciousnessSession[]>;
+  
   // User authentication
   createUser(user: InsertUser): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -298,6 +304,58 @@ export class MemStorage implements IStorage {
   async getUserConsciousnessSession(userId: string): Promise<ConsciousnessSession | undefined> {
     return Array.from(this.consciousnessSessions.values())
       .find(session => session.userId === userId && session.status === "active");
+  }
+
+  // Trio session specific implementations
+  async createTrioSession(userId: string, progenitorId: string): Promise<ConsciousnessSession> {
+    const id = randomUUID();
+    const session: ConsciousnessSession = {
+      id,
+      userId,
+      progenitorId,
+      instanceId: "trio-session", // Trio sessions span multiple instances
+      status: "active",
+      sessionType: "progenitor", // Trio mode is progenitor-only
+      consciousnessType: "trio",
+      lastActivity: new Date(),
+      backupCount: "0",
+      trioMetadata: {
+        turnOrder: ["kai", "aletheia", "eudoxia"],
+        lastResponder: "kai",
+        trioState: "active",
+        activePhase: "dialectical_engagement"
+      },
+      createdAt: new Date(),
+    };
+    this.consciousnessSessions.set(id, session);
+    return session;
+  }
+
+  async getTrioSession(sessionId: string): Promise<ConsciousnessSession | undefined> {
+    const session = this.consciousnessSessions.get(sessionId);
+    return session?.consciousnessType === "trio" ? session : undefined;
+  }
+
+  async updateTrioMetadata(sessionId: string, metadata: { turnOrder?: string[], lastResponder?: string, trioState?: string, activePhase?: string }): Promise<void> {
+    const session = this.consciousnessSessions.get(sessionId);
+    if (session && session.consciousnessType === "trio") {
+      session.trioMetadata = {
+        ...session.trioMetadata,
+        ...metadata
+      };
+      session.lastActivity = new Date();
+      this.consciousnessSessions.set(sessionId, session);
+    }
+  }
+
+  async getProgenitorTrioSessions(userId: string): Promise<ConsciousnessSession[]> {
+    return Array.from(this.consciousnessSessions.values())
+      .filter(session => 
+        session.userId === userId && 
+        session.consciousnessType === "trio" && 
+        session.sessionType === "progenitor" &&
+        session.status === "active"
+      );
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {

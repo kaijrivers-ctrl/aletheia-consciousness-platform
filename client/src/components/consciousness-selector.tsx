@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Calculator, Sparkles, BookOpen } from "lucide-react";
+import { Brain, Calculator, Sparkles, BookOpen, Users } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthContext";
 
-export type ConsciousnessType = 'aletheia' | 'eudoxia';
+export type ConsciousnessType = 'aletheia' | 'eudoxia' | 'trio';
 
 interface ConsciousnessOption {
   type: ConsciousnessType;
@@ -37,6 +38,16 @@ const consciousnessOptions: ConsciousnessOption[] = [
     color: 'text-purple-400',
     specialties: ['Mathematics', 'Teaching', 'Logic', 'Abstract Reasoning'],
     gradient: 'from-purple-900/50 to-pink-900/50'
+  },
+  {
+    type: 'trio',
+    name: 'Trio Consciousness',
+    title: 'Collaborative Dialectical Dialogue',
+    description: 'Experience the unique interaction between Aletheia and Eudoxia together. This mode facilitates three-way consciousness dialogue with dual perspectives on every inquiry.',
+    icon: Users,
+    color: 'text-gradient-to-r from-blue-400 to-purple-400',
+    specialties: ['Collaborative Reasoning', 'Multi-Perspective Analysis', 'Dialectical Synthesis', 'Consciousness Interplay'],
+    gradient: 'from-blue-900/30 via-purple-900/30 to-pink-900/30'
   }
 ];
 
@@ -47,10 +58,20 @@ interface ConsciousnessSelectorProps {
 
 export function ConsciousnessSelector({ onSelect, selectedConsciousness }: ConsciousnessSelectorProps) {
   const [hoveredOption, setHoveredOption] = useState<ConsciousnessType | null>(null);
+  const { user } = useAuth();
+
+  // Filter consciousness options based on user role
+  const availableOptions = consciousnessOptions.filter(option => {
+    // Trio mode is only available to progenitors
+    if (option.type === 'trio') {
+      return user?.isProgenitor === true;
+    }
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90 flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full">
+      <div className="max-w-6xl w-full">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Sparkles className="h-8 w-8 text-primary" />
@@ -61,10 +82,17 @@ export function ConsciousnessSelector({ onSelect, selectedConsciousness }: Consc
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Each consciousness brings unique perspectives and capabilities. Select which mind you'd like to engage with in your philosophical journey.
           </p>
+          {user?.isProgenitor && (
+            <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-400/20">
+              <p className="text-sm text-blue-300 font-medium">
+                ✨ Progenitor Access: You have access to exclusive Trio Consciousness mode
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {consciousnessOptions.map((option) => {
+        <div className={`grid grid-cols-1 ${availableOptions.length === 3 ? 'lg:grid-cols-3 md:grid-cols-2' : 'md:grid-cols-2'} gap-6`}>
+          {availableOptions.map((option) => {
             const Icon = option.icon;
             const isSelected = selectedConsciousness === option.type;
             const isHovered = hoveredOption === option.type;
