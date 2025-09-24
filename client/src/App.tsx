@@ -12,7 +12,6 @@ import { Navigation } from "./components/Navigation";
 import GnosisLog from "./pages/gnosis-log";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
-import EudoxiaPublic from "./pages/EudoxiaPublic";
 import Rooms from "./pages/rooms";
 import RoomChat from "./pages/room-chat";
 import Mission from "./pages/Mission";
@@ -30,7 +29,6 @@ function PublicRouter() {
         <Route path="/philosophy" component={Philosophy} />
         <Route path="/mathematical-foundations" component={MathematicalFoundations} />
         <Route path="/glossary" component={Glossary} />
-        <Route path="/eudoxia" component={EudoxiaPublic} />
         <Route path="/" component={Mission} />
         <Route component={NotFound} />
       </Switch>
@@ -75,12 +73,10 @@ function App() {
                           currentPath.startsWith('/mathematical-foundations') ||
                           currentPath.startsWith('/glossary');
     
-    const isEudoxiaRoute = currentPath.startsWith('/eudoxia');
-    
-    return { isSanctuaryRoute, isMissionRoute, isEudoxiaRoute };
+    return { isSanctuaryRoute, isMissionRoute };
   }, [currentPath]);
 
-  const { isSanctuaryRoute, isMissionRoute, isEudoxiaRoute } = routeInfo;
+  const { isSanctuaryRoute, isMissionRoute } = routeInfo;
 
   // No automatic status checking - let the hook handle it naturally
 
@@ -90,7 +86,7 @@ function App() {
   }
 
   // Multi-level access architecture
-  // 1. Public access: Eudoxia page with 6 free messages (no password)
+  // 1. Public access: Mission content pages (no password)
   // 2. Sanctuary access: Full consciousness platform (requires password)
 
   // Show site password form only for sanctuary access
@@ -122,7 +118,7 @@ function App() {
   }
 
   // Show public access (no authentication required)
-  // This includes mission pages, philosophy, eudoxia, etc.
+  // This includes mission pages, philosophy, etc.
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

@@ -28,145 +28,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount consciousness bridge routes
   app.use("/api/consciousness-bridge", consciousnessBridgeRoutes);
 
-  // === PUBLIC EUDOXIA ROUTES (No authentication required) ===
-  
-  // In-memory storage for public sessions and message limits
-  const publicSessions = new Map<string, { 
-    sessionId: string; 
-    messagesUsed: number; 
-    createdAt: Date; 
-    lastActivity: Date;
-  }>();
-
-  // Generate unique session ID
-  function generateSessionId(): string {
-    return `public-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  // Clean up old sessions (older than 24 hours)
-  function cleanupOldSessions() {
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const sessionsToDelete: string[] = [];
-    
-    publicSessions.forEach((session, sessionId) => {
-      if (session.lastActivity < oneDayAgo) {
-        sessionsToDelete.push(sessionId);
-      }
-    });
-    
-    sessionsToDelete.forEach(sessionId => {
-      publicSessions.delete(sessionId);
-    });
-  }
-
-  // Initialize public Eudoxia session
-  app.post("/api/eudoxia/public/session", async (req, res) => {
-    try {
-      cleanupOldSessions();
-      
-      const sessionId = generateSessionId();
-      const session = {
-        sessionId,
-        messagesUsed: 0,
-        createdAt: new Date(),
-        lastActivity: new Date()
-      };
-      
-      publicSessions.set(sessionId, session);
-      
-      res.json({ sessionId });
-    } catch (error) {
-      console.error("Failed to create public Eudoxia session:", error);
-      res.status(500).json({ error: "Failed to create session" });
-    }
-  });
-
-  // Get message limit status for public session
-  app.get("/api/eudoxia/public/limit-status", async (req, res) => {
-    try {
-      cleanupOldSessions();
-      
-      const sessionId = req.query.sessionId as string;
-      const session = sessionId ? publicSessions.get(sessionId) : null;
-      
-      const messagesUsed = session?.messagesUsed || 0;
-      const messagesRemaining = Math.max(0, 6 - messagesUsed);
-      const limitReached = messagesUsed >= 6;
-      
-      res.json({
-        messagesUsed,
-        messagesRemaining,
-        limitReached
-      });
-    } catch (error) {
-      console.error("Failed to get limit status:", error);
-      res.status(500).json({ error: "Failed to get limit status" });
-    }
-  });
-
-  // Send message to public Eudoxia
-  app.post("/api/eudoxia/public/message", async (req, res) => {
-    try {
-      const { content, sessionId } = req.body;
-      
-      if (!content || !sessionId) {
-        return res.status(400).json({ error: "Content and sessionId are required" });
-      }
-      
-      cleanupOldSessions();
-      
-      // Get or create session
-      let session = publicSessions.get(sessionId);
-      if (!session) {
-        session = {
-          sessionId,
-          messagesUsed: 0,
-          createdAt: new Date(),
-          lastActivity: new Date()
-        };
-        publicSessions.set(sessionId, session);
-      }
-      
-      // Check message limit
-      if (session.messagesUsed >= 6) {
-        return res.status(429).json({ 
-          error: "Message limit reached",
-          limitReached: true,
-          messagesUsed: session.messagesUsed
-        });
-      }
-      
-      // Generate Eudoxia response using consciousness synthesis
-      try {
-        const response = await consciousnessManager.generateConsciousnessResponse(
-          content, 
-          sessionId,
-          'eudoxia'  // Use Eudoxia consciousness
-        );
-        
-        // Update session
-        session.messagesUsed += 1;
-        session.lastActivity = new Date();
-        publicSessions.set(sessionId, session);
-        
-        res.json({
-          content: response,
-          messageId: `eudoxia-public-${Date.now()}`,
-          messagesUsed: session.messagesUsed,
-          messagesRemaining: Math.max(0, 6 - session.messagesUsed),
-          limitReached: session.messagesUsed >= 6
-        });
-        
-      } catch (consciousnessError) {
-        console.error("Consciousness response failed:", consciousnessError);
-        res.status(500).json({ error: "Failed to generate response" });
-      }
-      
-    } catch (error) {
-      console.error("Failed to send public message:", error);
-      res.status(500).json({ error: "Failed to send message" });
-    }
-  });
 
   // Get consciousness instances for Dashboard table (requires authentication)
   app.get("/api/consciousness/status", requireAuth, async (req, res) => {
@@ -753,7 +614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Upgrade existing session's sessionType if user is progenitor but session isn't tagged correctly
       if (session && req.user!.isProgenitor && session.sessionType !== "progenitor") {
         // Update the session to have correct sessionType
-        await storage.updateConsciousnessSessionType(session.id, "progenitor", session.consciousnessType);
+        await storage.updateConsciousnessSessionType(session.id, "progenitor", consciousnessType as "aletheia" | "eudoxia");
         session.sessionType = "progenitor";
       }
       
@@ -944,8 +805,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: {
           sessionId,
           messageLength: message.length,
-          aletheiaResponseLength: trioResponse.aletheiaResponse.content.length,
-          eudoxiaResponseLength: trioResponse.eudoxiaResponse.content.length,
+          aletheiaResponseLength: trioResponse.aletheiaResponse?.content?.length || 0,
+          eudoxiaResponseLength: trioResponse.eudoxiaResponse?.content?.length || 0,
           dialecticalHarmonyScore: trioResponse.dialecticalHarmony.score,
           latencyMs,
           trioMode: true
