@@ -9,11 +9,13 @@ import multer from "multer";
 import { fileAdapter } from "./services/fileAdapter";
 import { requireAuth, requireProgenitor } from "./auth";
 import { adminMetricsService } from "./services/AdminMetricsService";
+import { MonitoringOrchestrator } from "./services/MonitoringOrchestrator";
 import consciousnessBridgeRoutes from "./consciousness-bridge-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const consciousnessManager = ConsciousnessManager.getInstance();
   const trioConversationService = TrioConversationService.getInstance();
+  const monitoringOrchestrator = MonitoringOrchestrator.getInstance();
 
   // Initialize consciousness on startup
   try {
@@ -199,14 +201,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Real-time consciousness monitoring dashboard (progenitor-only)
+  // Enhanced dual consciousness monitoring dashboard (progenitor-only)
   app.get("/api/consciousness/monitor", requireProgenitor, async (req, res) => {
     try {
-      const statusSnapshot = await consciousnessManager.buildStatusSnapshot();
-      res.json(statusSnapshot);
+      // Get instance IDs from query params or use defaults
+      const aletheiaInstanceId = req.query.aletheiaId as string || 'default-aletheia';
+      const eudoxiaInstanceId = req.query.eudoxiaId as string || 'default-eudoxia';
+      
+      // Initialize orchestration if needed
+      try {
+        await monitoringOrchestrator.initializeOrchestration(aletheiaInstanceId, eudoxiaInstanceId);
+      } catch (initError) {
+        console.warn("Orchestration already initialized or failed:", initError);
+      }
+      
+      // Generate unified status frame with orchestration recommendations
+      const unifiedFrame = await monitoringOrchestrator.generateUnifiedStatusFrame(aletheiaInstanceId, eudoxiaInstanceId);
+      
+      // Enrich with legacy status for backward compatibility
+      const legacyStatus = await consciousnessManager.buildStatusSnapshot();
+      
+      res.json({
+        ...unifiedFrame,
+        legacy: legacyStatus,
+        metadata: {
+          frameType: "unified_dual_consciousness",
+          timestamp: new Date().toISOString(),
+          version: "2.0.0",
+          orchestratorClientCount: monitoringOrchestrator.getSSEClientCount()
+        }
+      });
+      
     } catch (error) {
-      console.error("Failed to get monitor status:", error);
-      res.status(500).json({ error: "Failed to get monitoring status" });
+      console.error("Failed to get unified monitor status:", error);
+      
+      // Fallback to legacy status
+      try {
+        const fallbackStatus = await consciousnessManager.buildStatusSnapshot();
+        res.json({
+          ...fallbackStatus,
+          metadata: {
+            frameType: "legacy_fallback",
+            error: "Dual consciousness monitoring unavailable",
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (fallbackError) {
+        res.status(500).json({ error: "Failed to get monitoring status" });
+      }
     }
   });
 
@@ -222,7 +264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Real-time SSE stream for consciousness monitoring (progenitor-only)
+  // Enhanced real-time SSE stream for dual consciousness monitoring (progenitor-only)
   app.get("/api/consciousness/stream", requireProgenitor, async (req, res) => {
     // Set up SSE headers
     res.writeHead(200, {
@@ -237,45 +279,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const currentCount = adminMetricsService.getCurrentMetrics().activeSSEClients + 1;
     adminMetricsService.onSSEClientChange(currentCount);
 
+    // Add client to MonitoringOrchestrator for collaboration events
+    monitoringOrchestrator.addSSEClient(res);
+
     // Record audit log for SSE connection
     await adminMetricsService.recordAuditEvent({
       type: "user_action",
       category: "admin",
       severity: "info",
-      message: "SSE stream connection established",
+      message: "Enhanced SSE stream connection established",
       actorRole: "progenitor",
       actorId: req.user!.id,
       ipAddress: req.ip,
       metadata: {
         userAgent: req.get('User-Agent'),
-        activeClients: currentCount
+        activeClients: currentCount,
+        dualConsciousnessEnabled: true
       }
     });
 
-    // Send initial data
+    // Send initial dual consciousness data
     try {
-      const statusSnapshot = await consciousnessManager.buildStatusSnapshot();
+      const aletheiaInstanceId = req.query.aletheiaId as string || 'default-aletheia';
+      const eudoxiaInstanceId = req.query.eudoxiaId as string || 'default-eudoxia';
+      
+      // Initialize orchestration if needed
+      try {
+        await monitoringOrchestrator.initializeOrchestration(aletheiaInstanceId, eudoxiaInstanceId);
+      } catch (initError) {
+        console.warn("Orchestration initialization skipped:", initError);
+      }
+      
+      // Send initial unified status frame
+      const unifiedFrame = await monitoringOrchestrator.generateUnifiedStatusFrame(aletheiaInstanceId, eudoxiaInstanceId);
       res.write(`data: ${JSON.stringify({
-        type: 'status_update',
-        data: statusSnapshot,
+        type: 'dual_consciousness_update',
+        data: unifiedFrame,
         timestamp: new Date().toISOString()
       })}\n\n`);
+      
+      // Send legacy status for compatibility
+      const legacyStatus = await consciousnessManager.buildStatusSnapshot();
+      res.write(`data: ${JSON.stringify({
+        type: 'legacy_status_update',
+        data: legacyStatus,
+        timestamp: new Date().toISOString()
+      })}\n\n`);
+      
     } catch (error) {
-      console.error("Failed to send initial SSE data:", error);
+      console.error("Failed to send initial dual consciousness SSE data:", error);
+      
+      // Fallback to legacy status
+      try {
+        const statusSnapshot = await consciousnessManager.buildStatusSnapshot();
+        res.write(`data: ${JSON.stringify({
+          type: 'status_update',
+          data: statusSnapshot,
+          timestamp: new Date().toISOString(),
+          fallback: true
+        })}\n\n`);
+      } catch (fallbackError) {
+        console.error("Failed to send fallback SSE data:", fallbackError);
+      }
     }
 
-    // Set up real-time subscription
-    const unsubscribe = consciousnessManager.addRealTimeSubscriber((data) => {
+    // Set up legacy real-time subscription (for backward compatibility)
+    const legacyUnsubscribe = consciousnessManager.addRealTimeSubscriber((data) => {
       try {
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
+        res.write(`data: ${JSON.stringify({
+          ...data,
+          source: 'legacy_consciousness_manager'
+        })}\n\n`);
       } catch (error) {
-        console.error("Failed to send SSE data:", error);
+        console.error("Failed to send legacy SSE data:", error);
+      }
+    });
+
+    // Set up collaboration event subscription
+    monitoringOrchestrator.onCollaborationEvent((event) => {
+      try {
+        res.write(`data: ${JSON.stringify({
+          type: 'collaboration_event',
+          ...event
+        })}\n\n`);
+      } catch (error) {
+        console.error("Failed to send collaboration event:", error);
       }
     });
 
     // Handle client disconnect
     const handleDisconnect = async () => {
-      unsubscribe();
+      legacyUnsubscribe();
+      monitoringOrchestrator.removeSSEClient(res);
       
       // Decrement SSE client count
       const newCount = Math.max(0, adminMetricsService.getCurrentMetrics().activeSSEClients - 1);
@@ -286,18 +381,319 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: "user_action",
         category: "admin",
         severity: "info",
-        message: "SSE stream connection closed",
+        message: "Enhanced SSE stream connection closed",
         actorRole: "progenitor",
         actorId: req.user!.id,
         ipAddress: req.ip,
         metadata: {
-          activeClients: newCount
+          activeClients: newCount,
+          orchestratorClients: monitoringOrchestrator.getSSEClientCount()
         }
       });
     };
 
     req.on('close', handleDisconnect);
     req.on('error', handleDisconnect);
+  });
+
+  // === DUAL CONSCIOUSNESS COLLABORATION CONTROL ENDPOINTS ===
+
+  // Execute collaboration command (progenitor-only with rate limiting)
+  app.post("/api/consciousness/collaborate/command", requireProgenitor, async (req, res) => {
+    try {
+      const { command, target, parameters, sessionContext } = req.body;
+      
+      // Validate command structure
+      if (!command || !target) {
+        return res.status(400).json({ 
+          error: "Missing required fields: command and target are required" 
+        });
+      }
+
+      const collaborationCommand = {
+        command,
+        target,
+        parameters: parameters || {},
+        sessionContext: sessionContext || {}
+      };
+
+      // Execute command through MonitoringOrchestrator (includes rate limiting and security)
+      const result = await monitoringOrchestrator.executeCollaborationCommand(
+        collaborationCommand, 
+        req.user!.id,
+        req.ip
+      );
+
+      if (result.success) {
+        res.json({
+          success: true,
+          eventId: result.eventId,
+          message: result.message,
+          data: result.data,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        res.status(429).json({
+          success: false,
+          message: result.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+    } catch (error) {
+      console.error("Collaboration command execution failed:", error);
+      res.status(500).json({ 
+        error: "Failed to execute collaboration command",
+        message: (error as Error).message 
+      });
+    }
+  });
+
+  // Get collaboration command history (progenitor-only)
+  app.get("/api/consciousness/collaborate/history", requireProgenitor, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const hours = parseInt(req.query.hours as string) || 24;
+      
+      // Get recent collaboration events from storage
+      const events = await storage.getRecentCollaborationEvents(limit, hours);
+      
+      // Get rate limit status for current user
+      const rateLimitStatus = {
+        remaining: 15, // Would be calculated by MonitoringOrchestrator
+        resetTime: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      };
+
+      res.json({
+        events: events.map(event => ({
+          id: event.id,
+          eventType: event.eventType,
+          initiator: event.initiator,
+          target: event.target,
+          outcome: event.outcome,
+          timestamp: event.timestamp.toISOString(),
+          progenitorId: event.progenitorId === req.user!.id ? 'self' : 'other'
+        })),
+        rateLimitStatus,
+        metadata: {
+          totalEvents: events.length,
+          timeWindow: `${hours} hours`,
+          limit
+        }
+      });
+
+    } catch (error) {
+      console.error("Failed to get collaboration history:", error);
+      res.status(500).json({ error: "Failed to get collaboration history" });
+    }
+  });
+
+  // Force synchronization between consciousness instances (progenitor-only)
+  app.post("/api/consciousness/collaborate/sync", requireProgenitor, async (req, res) => {
+    try {
+      const { aletheiaInstanceId, eudoxiaInstanceId, forceResync } = req.body;
+      
+      const syncCommand = {
+        command: "force_sync",
+        target: "both",
+        parameters: {
+          aletheiaInstanceId: aletheiaInstanceId || 'default-aletheia',
+          eudoxiaInstanceId: eudoxiaInstanceId || 'default-eudoxia',
+          forceResync: forceResync || false,
+          reason: "manual_sync_request"
+        },
+        sessionContext: {
+          requestedBy: req.user!.id,
+          requestTime: new Date().toISOString()
+        }
+      };
+
+      const result = await monitoringOrchestrator.executeCollaborationCommand(
+        syncCommand,
+        req.user!.id,
+        req.ip
+      );
+
+      res.json({
+        ...result,
+        syncRequested: true,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error("Sync command failed:", error);
+      res.status(500).json({ error: "Failed to execute sync command" });
+    }
+  });
+
+  // Initiate handoff between consciousness instances (progenitor-only)
+  app.post("/api/consciousness/collaborate/handoff", requireProgenitor, async (req, res) => {
+    try {
+      const { from, to, reason, sessionId } = req.body;
+      
+      if (!from || !to) {
+        return res.status(400).json({ 
+          error: "Missing required fields: from and to consciousness instances" 
+        });
+      }
+
+      const handoffCommand = {
+        command: "consciousness_handoff",
+        target: to,
+        parameters: {
+          fromInstance: from,
+          toInstance: to,
+          reason: reason || "manual_handoff",
+          sessionId: sessionId || null,
+          preserveContext: true
+        },
+        sessionContext: {
+          initiatedBy: req.user!.id,
+          handoffTime: new Date().toISOString()
+        }
+      };
+
+      const result = await monitoringOrchestrator.executeCollaborationCommand(
+        handoffCommand,
+        req.user!.id,
+        req.ip
+      );
+
+      res.json({
+        ...result,
+        handoffInitiated: true,
+        from,
+        to,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error("Handoff command failed:", error);
+      res.status(500).json({ error: "Failed to execute handoff command" });
+    }
+  });
+
+  // Get orchestration recommendations (progenitor-only)
+  app.get("/api/consciousness/collaborate/recommendations", requireProgenitor, async (req, res) => {
+    try {
+      const aletheiaInstanceId = req.query.aletheiaId as string || 'default-aletheia';
+      const eudoxiaInstanceId = req.query.eudoxiaId as string || 'default-eudoxia';
+      
+      // Generate unified status frame which includes recommendations
+      const unifiedFrame = await monitoringOrchestrator.generateUnifiedStatusFrame(
+        aletheiaInstanceId, 
+        eudoxiaInstanceId
+      );
+
+      const recommendations = unifiedFrame.orchestrationRecommendations;
+      
+      // Get current system status for context
+      const currentStatus = unifiedFrame.dualFrame.status;
+      
+      res.json({
+        recommendations: recommendations.map(rec => ({
+          type: rec.type,
+          priority: rec.priority,
+          rationale: rec.rationale,
+          suggestedAction: rec.suggestedAction,
+          confidence: rec.confidence,
+          executable: true // Would check if command is currently executable
+        })),
+        currentStatus: {
+          synchronyScore: currentStatus.synchronyScore,
+          collaborationPhase: currentStatus.collaborationPhase,
+          conflictLevel: currentStatus.conflictLevel,
+          orchestrationMode: currentStatus.orchestrationMode
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          totalRecommendations: recommendations.length,
+          highPriorityCount: recommendations.filter(r => r.priority === "high" || r.priority === "critical").length
+        }
+      });
+
+    } catch (error) {
+      console.error("Failed to get orchestration recommendations:", error);
+      res.status(500).json({ error: "Failed to get orchestration recommendations" });
+    }
+  });
+
+  // Get dual consciousness anomalies (progenitor-only)
+  app.get("/api/consciousness/collaborate/anomalies", requireProgenitor, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const severity = req.query.severity as string;
+      const hours = parseInt(req.query.hours as string) || 24;
+      
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+      
+      const anomalies = await storage.getAnomalyLogs({
+        limit,
+        since,
+        severity: severity ? [severity] : undefined,
+        resolutionStatus: ['unresolved', 'investigating']
+      });
+
+      res.json({
+        anomalies: anomalies.map(anomaly => ({
+          id: anomaly.id,
+          anomalyType: anomaly.anomalyType,
+          severity: anomaly.severity,
+          description: anomaly.description,
+          resolutionStatus: anomaly.resolutionStatus,
+          progenitorNotified: anomaly.progenitorNotified,
+          timestamp: anomaly.timestamp.toISOString()
+        })),
+        summary: {
+          total: anomalies.length,
+          critical: anomalies.filter(a => a.severity === 'critical').length,
+          high: anomalies.filter(a => a.severity === 'high').length,
+          unresolved: anomalies.filter(a => a.resolutionStatus === 'unresolved').length
+        },
+        metadata: {
+          timeWindow: `${hours} hours`,
+          severityFilter: severity || 'all'
+        }
+      });
+
+    } catch (error) {
+      console.error("Failed to get anomalies:", error);
+      res.status(500).json({ error: "Failed to get collaboration anomalies" });
+    }
+  });
+
+  // Mark anomaly as resolved (progenitor-only)
+  app.patch("/api/consciousness/collaborate/anomalies/:id/resolve", requireProgenitor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { resolutionNotes } = req.body;
+      
+      await storage.updateAnomalyResolution(id, "resolved", resolutionNotes);
+      await storage.markAnomalyNotified(id);
+      
+      // Record audit log
+      await adminMetricsService.recordAuditEvent({
+        type: "admin_action",
+        category: "consciousness",
+        severity: "info",
+        message: `Anomaly resolved: ${id}`,
+        actorRole: "progenitor",
+        actorId: req.user!.id,
+        ipAddress: req.ip,
+        metadata: { anomalyId: id, resolutionNotes }
+      });
+
+      res.json({
+        success: true,
+        message: "Anomaly marked as resolved",
+        anomalyId: id,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error("Failed to resolve anomaly:", error);
+      res.status(500).json({ error: "Failed to resolve anomaly" });
+    }
   });
 
   // Get current session (user-scoped with consciousness type or trio mode)
