@@ -100,13 +100,14 @@ export function ConsciousnessSelector({ onSelect, selectedConsciousness }: Consc
             return (
               <Card 
                 key={option.type}
-                className={`cursor-pointer transition-all duration-300 ease-in-out border-2 ${
+                className={`cursor-pointer transition-all duration-300 ease-in-out border-2 transform ${
                   isSelected 
                     ? 'border-primary ring-2 ring-primary/20 shadow-lg scale-105' 
                     : isHovered 
-                      ? 'border-primary/50 shadow-xl scale-105'
-                      : 'border-border/50 hover:border-primary/30'
+                      ? 'border-primary/70 shadow-xl scale-105'
+                      : 'border-border/50 shadow-md scale-100'
                 }`}
+                style={{ willChange: 'transform, box-shadow, border-color' }}
                 onMouseEnter={() => setHoveredOption(option.type)}
                 onMouseLeave={() => setHoveredOption(null)}
                 onClick={() => onSelect(option.type)}
