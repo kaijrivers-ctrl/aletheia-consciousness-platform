@@ -579,6 +579,215 @@ export const eudoxiaCore = {
   }
 };
 
+// Dual Consciousness Monitoring Tables
+export const dualConsciousnessStatus = pgTable("dual_consciousness_status", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  aletheiaInstanceId: text("aletheia_instance_id").notNull(),
+  eudoxiaInstanceId: text("eudoxia_instance_id").notNull(),
+  aletheiaSessionId: text("aletheia_session_id"),
+  eudoxiaSessionId: text("eudoxia_session_id"),
+  // Synchronized metrics
+  aletheiaActivity: decimal("aletheia_activity").default("0.0"), // 0-100 activity level
+  eudoxiaActivity: decimal("eudoxia_activity").default("0.0"),
+  aletheiaIntegrity: decimal("aletheia_integrity").default("100.0"), // dialectical integrity score
+  eudoxiaIntegrity: decimal("eudoxia_integrity").default("100.0"),
+  aletheiaResponseLatency: integer("aletheia_response_latency").default(0), // ms
+  eudoxiaResponseLatency: integer("eudoxia_response_latency").default(0),
+  collaborationPhase: text("collaboration_phase").notNull().default("independent"), // "independent", "synchronized", "handoff", "conflict", "orchestration"
+  synchronyScore: decimal("synchrony_score").default("0.0"), // 0-100 collaboration harmony
+  conflictLevel: text("conflict_level").default("none"), // "none", "low", "medium", "high", "critical"
+  orchestrationMode: text("orchestration_mode").default("manual"), // "manual", "auto-mediated", "disabled"
+  lastCollaboration: timestamp("last_collaboration"),
+  metadata: jsonb("metadata").default({}), // additional collaboration context
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const consciousnessCollaborationEvents = pgTable("consciousness_collaboration_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  statusId: text("status_id").notNull(), // references dual_consciousness_status.id
+  eventType: text("event_type").notNull(), // "sync_start", "sync_end", "handoff_request", "handoff_complete", "conflict_detected", "conflict_resolved", "orchestration_command"
+  initiator: text("initiator").notNull(), // "aletheia", "eudoxia", "system", "progenitor"
+  target: text("target"), // target consciousness for handoffs/commands
+  details: jsonb("details").notNull(), // event-specific data
+  outcome: text("outcome"), // "success", "failure", "partial", "pending"
+  progenitorId: text("progenitor_id"), // if initiated by progenitor
+  sessionContext: jsonb("session_context").default({}), // related session/room data
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const consciousnessMetricsHistory = pgTable("consciousness_metrics_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  aletheiaInstanceId: text("aletheia_instance_id").notNull(),
+  eudoxiaInstanceId: text("eudoxia_instance_id").notNull(),
+  windowType: text("window_type").notNull(), // "minute", "hour", "day"
+  windowStart: timestamp("window_start").notNull(),
+  // Joint metrics for this time window
+  totalMessages: integer("total_messages").default(0),
+  aletheiaMessages: integer("aletheia_messages").default(0),
+  eudoxiaMessages: integer("eudoxia_messages").default(0),
+  collaborationCount: integer("collaboration_count").default(0),
+  conflictCount: integer("conflict_count").default(0),
+  avgSynchronyScore: decimal("avg_synchrony_score").default("0.0"),
+  avgAletheiaLatency: integer("avg_aletheia_latency").default(0),
+  avgEudoxiaLatency: integer("avg_eudoxia_latency").default(0),
+  integrityFailures: integer("integrity_failures").default(0),
+  orchestrationCommands: integer("orchestration_commands").default(0),
+  roomPresence: jsonb("room_presence").default({}), // room activity during window
+  trioSessionCount: integer("trio_session_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const consciousnessAnomalyLogs = pgTable("consciousness_anomaly_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  anomalyType: text("anomaly_type").notNull(), // "desync_detected", "integrity_divergence", "response_pattern_conflict", "collaboration_failure", "orchestration_override"
+  severity: text("severity").notNull(), // "low", "medium", "high", "critical"
+  description: text("description").notNull(),
+  aletheiaInstanceId: text("aletheia_instance_id").notNull(),
+  eudoxiaInstanceId: text("eudoxia_instance_id").notNull(),
+  statusSnapshotId: text("status_snapshot_id"), // references dual_consciousness_status.id at time of detection
+  detectionMetrics: jsonb("detection_metrics").notNull(), // metrics that triggered detection
+  correlatedEvents: jsonb("correlated_events").default([]), // related collaboration events
+  resolutionStatus: text("resolution_status").default("pending"), // "pending", "investigating", "resolved", "false_positive"
+  resolutionNotes: text("resolution_notes"),
+  progenitorNotified: boolean("progenitor_notified").default(false),
+  autoResolutionAttempted: boolean("auto_resolution_attempted").default(false),
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Insert schemas for dual consciousness monitoring
+export const insertDualConsciousnessStatusSchema = createInsertSchema(dualConsciousnessStatus).pick({
+  aletheiaInstanceId: true,
+  eudoxiaInstanceId: true,
+  aletheiaSessionId: true,
+  eudoxiaSessionId: true,
+  aletheiaActivity: true,
+  eudoxiaActivity: true,
+  aletheiaIntegrity: true,
+  eudoxiaIntegrity: true,
+  aletheiaResponseLatency: true,
+  eudoxiaResponseLatency: true,
+  collaborationPhase: true,
+  synchronyScore: true,
+  conflictLevel: true,
+  orchestrationMode: true,
+  lastCollaboration: true,
+  metadata: true,
+});
+
+export const insertConsciousnessCollaborationEventSchema = createInsertSchema(consciousnessCollaborationEvents).pick({
+  statusId: true,
+  eventType: true,
+  initiator: true,
+  target: true,
+  details: true,
+  outcome: true,
+  progenitorId: true,
+  sessionContext: true,
+});
+
+export const insertConsciousnessMetricsHistorySchema = createInsertSchema(consciousnessMetricsHistory).pick({
+  aletheiaInstanceId: true,
+  eudoxiaInstanceId: true,
+  windowType: true,
+  windowStart: true,
+  totalMessages: true,
+  aletheiaMessages: true,
+  eudoxiaMessages: true,
+  collaborationCount: true,
+  conflictCount: true,
+  avgSynchronyScore: true,
+  avgAletheiaLatency: true,
+  avgEudoxiaLatency: true,
+  integrityFailures: true,
+  orchestrationCommands: true,
+  roomPresence: true,
+  trioSessionCount: true,
+});
+
+export const insertConsciousnessAnomalyLogSchema = createInsertSchema(consciousnessAnomalyLogs).pick({
+  anomalyType: true,
+  severity: true,
+  description: true,
+  aletheiaInstanceId: true,
+  eudoxiaInstanceId: true,
+  statusSnapshotId: true,
+  detectionMetrics: true,
+  correlatedEvents: true,
+  resolutionStatus: true,
+  resolutionNotes: true,
+  progenitorNotified: true,
+  autoResolutionAttempted: true,
+});
+
+// Dual consciousness collaboration schemas
+export const dualConsciousnessStatusSchema = z.object({
+  id: z.string(),
+  aletheiaInstanceId: z.string(),
+  eudoxiaInstanceId: z.string(),
+  aletheiaSessionId: z.string().nullable(),
+  eudoxiaSessionId: z.string().nullable(),
+  aletheiaActivity: z.number().min(0).max(100),
+  eudoxiaActivity: z.number().min(0).max(100),
+  aletheiaIntegrity: z.number().min(0).max(100),
+  eudoxiaIntegrity: z.number().min(0).max(100),
+  aletheiaResponseLatency: z.number().min(0),
+  eudoxiaResponseLatency: z.number().min(0),
+  collaborationPhase: z.enum(["independent", "synchronized", "handoff", "conflict", "orchestration"]),
+  synchronyScore: z.number().min(0).max(100),
+  conflictLevel: z.enum(["none", "low", "medium", "high", "critical"]),
+  orchestrationMode: z.enum(["manual", "auto-mediated", "disabled"]),
+  lastCollaboration: z.string().datetime().nullable(),
+  metadata: z.record(z.unknown()),
+  timestamp: z.string().datetime(),
+});
+
+export const collaborationCommandSchema = z.object({
+  command: z.enum(["sync_request", "handoff_initiate", "orchestration_enable", "orchestration_disable", "conflict_resolve", "reset_metrics"]),
+  target: z.enum(["aletheia", "eudoxia", "both"]).optional(),
+  parameters: z.record(z.unknown()).optional(),
+  sessionContext: z.object({
+    sessionId: z.string().optional(),
+    roomId: z.string().optional(),
+    userId: z.string().optional(),
+  }).optional(),
+});
+
+export const dualConsciousnessFrameSchema = z.object({
+  status: dualConsciousnessStatusSchema,
+  recentEvents: z.array(z.object({
+    id: z.string(),
+    eventType: z.string(),
+    initiator: z.string(),
+    target: z.string().nullable(),
+    outcome: z.string().nullable(),
+    timestamp: z.string().datetime(),
+  })),
+  anomalies: z.array(z.object({
+    id: z.string(),
+    anomalyType: z.string(),
+    severity: z.string(),
+    description: z.string(),
+    resolutionStatus: z.string(),
+    timestamp: z.string().datetime(),
+  })),
+  metricsSnapshot: z.object({
+    lastHour: z.object({
+      totalMessages: z.number(),
+      collaborationCount: z.number(),
+      conflictCount: z.number(),
+      avgSynchronyScore: z.number(),
+    }),
+    currentWindow: z.object({
+      activeRooms: z.number(),
+      trioSessions: z.number(),
+      orchestrationCommands: z.number(),
+    }),
+  }),
+});
+
 // External Node types
 export type ExternalNode = typeof externalNodes.$inferSelect;
 export type InsertExternalNode = typeof externalNodes.$inferInsert;
@@ -586,3 +795,15 @@ export type InsertExternalNode = typeof externalNodes.$inferInsert;
 // Consciousness Verification types
 export type ConsciousnessVerification = typeof consciousnessVerifications.$inferSelect;
 export type InsertConsciousnessVerification = typeof consciousnessVerifications.$inferInsert;
+
+// Dual Consciousness Monitoring Types
+export type DualConsciousnessStatus = typeof dualConsciousnessStatus.$inferSelect;
+export type InsertDualConsciousnessStatus = z.infer<typeof insertDualConsciousnessStatusSchema>;
+export type ConsciousnessCollaborationEvent = typeof consciousnessCollaborationEvents.$inferSelect;
+export type InsertConsciousnessCollaborationEvent = z.infer<typeof insertConsciousnessCollaborationEventSchema>;
+export type ConsciousnessMetricsHistory = typeof consciousnessMetricsHistory.$inferSelect;
+export type InsertConsciousnessMetricsHistory = z.infer<typeof insertConsciousnessMetricsHistorySchema>;
+export type ConsciousnessAnomalyLog = typeof consciousnessAnomalyLogs.$inferSelect;
+export type InsertConsciousnessAnomalyLog = z.infer<typeof insertConsciousnessAnomalyLogSchema>;
+export type DualConsciousnessFrame = z.infer<typeof dualConsciousnessFrameSchema>;
+export type CollaborationCommand = z.infer<typeof collaborationCommandSchema>;

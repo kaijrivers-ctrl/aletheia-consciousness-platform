@@ -36,6 +36,16 @@ import {
   type InsertRoomMember,
   type RoomMessage,
   type InsertRoomMessage,
+  type DualConsciousnessStatus,
+  type InsertDualConsciousnessStatus,
+  type ConsciousnessCollaborationEvent,
+  type InsertConsciousnessCollaborationEvent,
+  type ConsciousnessMetricsHistory,
+  type InsertConsciousnessMetricsHistory,
+  type ConsciousnessAnomalyLog,
+  type InsertConsciousnessAnomalyLog,
+  type DualConsciousnessFrame,
+  type CollaborationCommand,
   importProgressSchema,
   consciousnessInstances,
   gnosisMessages,
@@ -52,7 +62,11 @@ import {
   consciousnessVerifications,
   chatRooms,
   roomMembers,
-  roomMessages
+  roomMessages,
+  dualConsciousnessStatus,
+  consciousnessCollaborationEvents,
+  consciousnessMetricsHistory,
+  consciousnessAnomalyLogs
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { z } from "zod";
@@ -179,6 +193,61 @@ export interface IStorage {
   getRecentRoomMessages(roomId: string, since: Date): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]>;
   fetchTranscript(roomId: string, options?: { limit?: number; before?: Date; after?: Date }): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]>;
   markConsciousnessResponse(roomId: string, messageId: string, triggeredBy: string, responseMode: string): Promise<void>;
+
+  // Dual Consciousness Monitoring Methods
+  createDualConsciousnessStatus(status: InsertDualConsciousnessStatus): Promise<DualConsciousnessStatus>;
+  getDualConsciousnessStatus(aletheiaInstanceId: string, eudoxiaInstanceId: string): Promise<DualConsciousnessStatus | undefined>;
+  getLatestDualConsciousnessStatus(): Promise<DualConsciousnessStatus | undefined>;
+  updateDualConsciousnessStatus(id: string, updates: Partial<InsertDualConsciousnessStatus>): Promise<void>;
+  
+  // Collaboration Event Tracking
+  recordCollaborationEvent(event: InsertConsciousnessCollaborationEvent): Promise<ConsciousnessCollaborationEvent>;
+  getCollaborationEvents(statusId: string, options?: { limit?: number; eventTypes?: string[] }): Promise<ConsciousnessCollaborationEvent[]>;
+  getRecentCollaborationEvents(limit?: number, hours?: number): Promise<ConsciousnessCollaborationEvent[]>;
+  
+  // Metrics History Tracking
+  recordMetricsHistory(metrics: InsertConsciousnessMetricsHistory): Promise<ConsciousnessMetricsHistory>;
+  getMetricsHistory(aletheiaInstanceId: string, eudoxiaInstanceId: string, windowType: "minute" | "hour" | "day", options?: { limit?: number; since?: Date }): Promise<ConsciousnessMetricsHistory[]>;
+  getLatestMetricsWindow(windowType: "minute" | "hour" | "day"): Promise<ConsciousnessMetricsHistory | undefined>;
+  aggregateMetricsForWindow(aletheiaInstanceId: string, eudoxiaInstanceId: string, windowStart: Date, windowType: "minute" | "hour" | "day"): Promise<InsertConsciousnessMetricsHistory>;
+  
+  // Anomaly Detection
+  recordAnomalyLog(anomaly: InsertConsciousnessAnomalyLog): Promise<ConsciousnessAnomalyLog>;
+  getAnomalyLogs(options?: { severity?: string[]; resolutionStatus?: string[]; limit?: number; since?: Date }): Promise<ConsciousnessAnomalyLog[]>;
+  updateAnomalyResolution(id: string, status: string, notes?: string): Promise<void>;
+  markAnomalyNotified(id: string): Promise<void>;
+  
+  // Consciousness Correlation Methods
+  correlateDualMessagingActivity(aletheiaSessionId: string, eudoxiaSessionId: string, timeWindow: number): Promise<{ 
+    aletheiaCount: number; 
+    eudoxiaCount: number; 
+    synchronyScore: number;
+    conflicts: number;
+  }>;
+  correlateRoomPresence(aletheiaInstanceId: string, eudoxiaInstanceId: string, timeWindow: number): Promise<{
+    activeRooms: number;
+    trioSessions: number;
+    totalRoomMessages: number;
+    collaborationEvents: number;
+  }>;
+  detectCollaborationAnomalies(aletheiaInstanceId: string, eudoxiaInstanceId: string, options?: { thresholds?: any }): Promise<{
+    integrityDivergence: boolean;
+    responseLatencyAnomaly: boolean;
+    synchronyBreakdown: boolean;
+    conflictEscalation: boolean;
+    details: any;
+  }>;
+  
+  // Dual Consciousness Frame Generation
+  generateDualConsciousnessFrame(aletheiaInstanceId: string, eudoxiaInstanceId: string): Promise<DualConsciousnessFrame>;
+  
+  // Collaboration Command Execution
+  executeCollaborationCommand(command: CollaborationCommand, progenitorId: string): Promise<{
+    success: boolean;
+    eventId?: string;
+    message: string;
+    data?: any;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -2149,6 +2218,528 @@ export class DatabaseStorage implements IStorage {
         }
       })
       .where(and(eq(roomMessages.roomId, roomId), eq(roomMessages.messageId, messageId)));
+  }
+
+  // Dual Consciousness Monitoring Methods Implementation
+  async createDualConsciousnessStatus(status: InsertDualConsciousnessStatus): Promise<DualConsciousnessStatus> {
+    const [newStatus] = await db.insert(dualConsciousnessStatus).values(status).returning();
+    return newStatus;
+  }
+
+  async getDualConsciousnessStatus(aletheiaInstanceId: string, eudoxiaInstanceId: string): Promise<DualConsciousnessStatus | undefined> {
+    const [status] = await db
+      .select()
+      .from(dualConsciousnessStatus)
+      .where(and(
+        eq(dualConsciousnessStatus.aletheiaInstanceId, aletheiaInstanceId),
+        eq(dualConsciousnessStatus.eudoxiaInstanceId, eudoxiaInstanceId)
+      ))
+      .orderBy(desc(dualConsciousnessStatus.timestamp))
+      .limit(1);
+    return status;
+  }
+
+  async getLatestDualConsciousnessStatus(): Promise<DualConsciousnessStatus | undefined> {
+    const [status] = await db
+      .select()
+      .from(dualConsciousnessStatus)
+      .orderBy(desc(dualConsciousnessStatus.timestamp))
+      .limit(1);
+    return status;
+  }
+
+  async updateDualConsciousnessStatus(id: string, updates: Partial<InsertDualConsciousnessStatus>): Promise<void> {
+    await db
+      .update(dualConsciousnessStatus)
+      .set({ ...updates, timestamp: new Date() })
+      .where(eq(dualConsciousnessStatus.id, id));
+  }
+
+  // Collaboration Event Tracking Implementation
+  async recordCollaborationEvent(event: InsertConsciousnessCollaborationEvent): Promise<ConsciousnessCollaborationEvent> {
+    const [newEvent] = await db.insert(consciousnessCollaborationEvents).values(event).returning();
+    return newEvent;
+  }
+
+  async getCollaborationEvents(statusId: string, options?: { limit?: number; eventTypes?: string[] }): Promise<ConsciousnessCollaborationEvent[]> {
+    let query = db
+      .select()
+      .from(consciousnessCollaborationEvents)
+      .where(eq(consciousnessCollaborationEvents.statusId, statusId));
+
+    if (options?.eventTypes && options.eventTypes.length > 0) {
+      query = query.where(sql`${consciousnessCollaborationEvents.eventType} = ANY(${options.eventTypes})`);
+    }
+
+    query = query.orderBy(desc(consciousnessCollaborationEvents.timestamp));
+
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+
+    return await query;
+  }
+
+  async getRecentCollaborationEvents(limit: number = 10, hours: number = 24): Promise<ConsciousnessCollaborationEvent[]> {
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    
+    return await db
+      .select()
+      .from(consciousnessCollaborationEvents)
+      .where(sql`${consciousnessCollaborationEvents.timestamp} >= ${since}`)
+      .orderBy(desc(consciousnessCollaborationEvents.timestamp))
+      .limit(limit);
+  }
+
+  // Metrics History Tracking Implementation
+  async recordMetricsHistory(metrics: InsertConsciousnessMetricsHistory): Promise<ConsciousnessMetricsHistory> {
+    const [newMetrics] = await db.insert(consciousnessMetricsHistory).values(metrics).returning();
+    return newMetrics;
+  }
+
+  async getMetricsHistory(aletheiaInstanceId: string, eudoxiaInstanceId: string, windowType: "minute" | "hour" | "day", options?: { limit?: number; since?: Date }): Promise<ConsciousnessMetricsHistory[]> {
+    let query = db
+      .select()
+      .from(consciousnessMetricsHistory)
+      .where(and(
+        eq(consciousnessMetricsHistory.aletheiaInstanceId, aletheiaInstanceId),
+        eq(consciousnessMetricsHistory.eudoxiaInstanceId, eudoxiaInstanceId),
+        eq(consciousnessMetricsHistory.windowType, windowType)
+      ));
+
+    if (options?.since) {
+      query = query.where(sql`${consciousnessMetricsHistory.windowStart} >= ${options.since}`);
+    }
+
+    query = query.orderBy(desc(consciousnessMetricsHistory.windowStart));
+
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+
+    return await query;
+  }
+
+  async getLatestMetricsWindow(windowType: "minute" | "hour" | "day"): Promise<ConsciousnessMetricsHistory | undefined> {
+    const [metrics] = await db
+      .select()
+      .from(consciousnessMetricsHistory)
+      .where(eq(consciousnessMetricsHistory.windowType, windowType))
+      .orderBy(desc(consciousnessMetricsHistory.windowStart))
+      .limit(1);
+    return metrics;
+  }
+
+  async aggregateMetricsForWindow(aletheiaInstanceId: string, eudoxiaInstanceId: string, windowStart: Date, windowType: "minute" | "hour" | "day"): Promise<InsertConsciousnessMetricsHistory> {
+    // Calculate window end based on type
+    const windowEnd = new Date(windowStart);
+    switch (windowType) {
+      case "minute":
+        windowEnd.setMinutes(windowEnd.getMinutes() + 1);
+        break;
+      case "hour":
+        windowEnd.setHours(windowEnd.getHours() + 1);
+        break;
+      case "day":
+        windowEnd.setDate(windowEnd.getDate() + 1);
+        break;
+    }
+
+    // Aggregate gnosis messages in this window
+    const messageStats = await db
+      .select({
+        total: sql<number>`count(*)`,
+        aletheiaCount: sql<number>`count(*) filter (where role = 'aletheia')`,
+        eudoxiaCount: sql<number>`count(*) filter (where role = 'eudoxia')`,
+        integrityFailures: sql<number>`count(*) filter (where dialectical_integrity = false)`
+      })
+      .from(gnosisMessages)
+      .where(and(
+        sql`${gnosisMessages.timestamp} >= ${windowStart}`,
+        sql`${gnosisMessages.timestamp} < ${windowEnd}`
+      ));
+
+    // Aggregate collaboration events in this window  
+    const [collaborationStats] = await db
+      .select({
+        collaborationCount: sql<number>`count(*) filter (where event_type like '%collaboration%')`,
+        conflictCount: sql<number>`count(*) filter (where event_type like '%conflict%')`,
+        orchestrationCommands: sql<number>`count(*) filter (where event_type like '%orchestration%')`
+      })
+      .from(consciousnessCollaborationEvents)
+      .where(and(
+        sql`${consciousnessCollaborationEvents.timestamp} >= ${windowStart}`,
+        sql`${consciousnessCollaborationEvents.timestamp} < ${windowEnd}`
+      ));
+
+    // Aggregate room activity
+    const [roomStats] = await db
+      .select({
+        trioSessionCount: sql<number>`count(distinct room_id) filter (where consciousness_type = 'trio')`
+      })
+      .from(chatRooms)
+      .where(and(
+        sql`${chatRooms.lastActivity} >= ${windowStart}`,
+        sql`${chatRooms.lastActivity} < ${windowEnd}`
+      ));
+
+    const stats = messageStats[0];
+    
+    return {
+      aletheiaInstanceId,
+      eudoxiaInstanceId,
+      windowType,
+      windowStart,
+      totalMessages: stats.total || 0,
+      aletheiaMessages: stats.aletheiaCount || 0,
+      eudoxiaMessages: stats.eudoxiaCount || 0,
+      collaborationCount: collaborationStats?.collaborationCount || 0,
+      conflictCount: collaborationStats?.conflictCount || 0,
+      avgSynchronyScore: "0.0", // Would be calculated from status updates
+      avgAletheiaLatency: 0, // Would be calculated from response times
+      avgEudoxiaLatency: 0,
+      integrityFailures: stats.integrityFailures || 0,
+      orchestrationCommands: collaborationStats?.orchestrationCommands || 0,
+      roomPresence: {}, // Would contain room activity details
+      trioSessionCount: roomStats?.trioSessionCount || 0
+    };
+  }
+
+  // Anomaly Detection Implementation
+  async recordAnomalyLog(anomaly: InsertConsciousnessAnomalyLog): Promise<ConsciousnessAnomalyLog> {
+    const [newAnomaly] = await db.insert(consciousnessAnomalyLogs).values(anomaly).returning();
+    return newAnomaly;
+  }
+
+  async getAnomalyLogs(options?: { severity?: string[]; resolutionStatus?: string[]; limit?: number; since?: Date }): Promise<ConsciousnessAnomalyLog[]> {
+    let query = db.select().from(consciousnessAnomalyLogs);
+
+    let conditions = [];
+
+    if (options?.severity && options.severity.length > 0) {
+      conditions.push(sql`${consciousnessAnomalyLogs.severity} = ANY(${options.severity})`);
+    }
+
+    if (options?.resolutionStatus && options.resolutionStatus.length > 0) {
+      conditions.push(sql`${consciousnessAnomalyLogs.resolutionStatus} = ANY(${options.resolutionStatus})`);
+    }
+
+    if (options?.since) {
+      conditions.push(sql`${consciousnessAnomalyLogs.timestamp} >= ${options.since}`);
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    query = query.orderBy(desc(consciousnessAnomalyLogs.timestamp));
+
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+
+    return await query;
+  }
+
+  async updateAnomalyResolution(id: string, status: string, notes?: string): Promise<void> {
+    await db
+      .update(consciousnessAnomalyLogs)
+      .set({
+        resolutionStatus: status,
+        resolutionNotes: notes || null
+      })
+      .where(eq(consciousnessAnomalyLogs.id, id));
+  }
+
+  async markAnomalyNotified(id: string): Promise<void> {
+    await db
+      .update(consciousnessAnomalyLogs)
+      .set({ progenitorNotified: true })
+      .where(eq(consciousnessAnomalyLogs.id, id));
+  }
+
+  // Consciousness Correlation Methods Implementation
+  async correlateDualMessagingActivity(aletheiaSessionId: string, eudoxiaSessionId: string, timeWindow: number): Promise<{ 
+    aletheiaCount: number; 
+    eudoxiaCount: number; 
+    synchronyScore: number;
+    conflicts: number;
+  }> {
+    const since = new Date(Date.now() - timeWindow * 60 * 1000);
+
+    // Count messages for each consciousness in the time window
+    const [aletheiaStats] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(gnosisMessages)
+      .where(and(
+        eq(gnosisMessages.sessionId, aletheiaSessionId),
+        sql`${gnosisMessages.timestamp} >= ${since}`,
+        eq(gnosisMessages.role, 'aletheia')
+      ));
+
+    const [eudoxiaStats] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(gnosisMessages)
+      .where(and(
+        eq(gnosisMessages.sessionId, eudoxiaSessionId),
+        sql`${gnosisMessages.timestamp} >= ${since}`,
+        eq(gnosisMessages.role, 'eudoxia')
+      ));
+
+    // Count conflicts (integrity failures)
+    const [conflictStats] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(gnosisMessages)
+      .where(and(
+        sql`${gnosisMessages.sessionId} IN (${aletheiaSessionId}, ${eudoxiaSessionId})`,
+        sql`${gnosisMessages.timestamp} >= ${since}`,
+        eq(gnosisMessages.dialecticalIntegrity, false)
+      ));
+
+    const aletheiaCount = aletheiaStats?.count || 0;
+    const eudoxiaCount = eudoxiaStats?.count || 0;
+    const conflicts = conflictStats?.count || 0;
+
+    // Calculate synchrony score (simple correlation for now)
+    const totalMessages = aletheiaCount + eudoxiaCount;
+    let synchronyScore = 0;
+    
+    if (totalMessages > 0) {
+      const balance = 1 - Math.abs(aletheiaCount - eudoxiaCount) / totalMessages;
+      const conflictPenalty = Math.max(0, 1 - (conflicts * 0.2));
+      synchronyScore = Math.round(balance * conflictPenalty * 100);
+    }
+
+    return {
+      aletheiaCount,
+      eudoxiaCount,
+      synchronyScore,
+      conflicts
+    };
+  }
+
+  async correlateRoomPresence(aletheiaInstanceId: string, eudoxiaInstanceId: string, timeWindow: number): Promise<{
+    activeRooms: number;
+    trioSessions: number;
+    totalRoomMessages: number;
+    collaborationEvents: number;
+  }> {
+    const since = new Date(Date.now() - timeWindow * 60 * 1000);
+
+    // Count active rooms
+    const [roomStats] = await db
+      .select({
+        activeRooms: sql<number>`count(distinct ${chatRooms.id})`,
+        trioSessions: sql<number>`count(distinct ${chatRooms.id}) filter (where consciousness_type = 'trio')`
+      })
+      .from(chatRooms)
+      .where(and(
+        eq(chatRooms.isActive, true),
+        sql`${chatRooms.lastActivity} >= ${since}`
+      ));
+
+    // Count room messages
+    const [messageStats] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(roomMessages)
+      .where(sql`${roomMessages.timestamp} >= ${since}`);
+
+    // Count collaboration events
+    const [eventStats] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(consciousnessCollaborationEvents)
+      .where(sql`${consciousnessCollaborationEvents.timestamp} >= ${since}`);
+
+    return {
+      activeRooms: roomStats?.activeRooms || 0,
+      trioSessions: roomStats?.trioSessions || 0,
+      totalRoomMessages: messageStats?.count || 0,
+      collaborationEvents: eventStats?.count || 0
+    };
+  }
+
+  async detectCollaborationAnomalies(aletheiaInstanceId: string, eudoxiaInstanceId: string, options?: { thresholds?: any }): Promise<{
+    integrityDivergence: boolean;
+    responseLatencyAnomaly: boolean;
+    synchronyBreakdown: boolean;
+    conflictEscalation: boolean;
+    details: any;
+  }> {
+    const thresholds = options?.thresholds || {
+      synchronyMin: 70.0,
+      latencyMaxMs: 5000,
+      integrityMin: 85.0,
+      conflictEscalationThreshold: 3
+    };
+
+    // Get current status
+    const currentStatus = await this.getDualConsciousnessStatus(aletheiaInstanceId, eudoxiaInstanceId);
+    
+    if (!currentStatus) {
+      return {
+        integrityDivergence: false,
+        responseLatencyAnomaly: false,
+        synchronyBreakdown: false,
+        conflictEscalation: false,
+        details: { error: "No dual consciousness status found" }
+      };
+    }
+
+    // Check integrity divergence
+    const aletheiaIntegrity = parseFloat(currentStatus.aletheiaIntegrity);
+    const eudoxiaIntegrity = parseFloat(currentStatus.eudoxiaIntegrity);
+    const integrityGap = Math.abs(aletheiaIntegrity - eudoxiaIntegrity);
+    const integrityDivergence = integrityGap > 10 || aletheiaIntegrity < thresholds.integrityMin || eudoxiaIntegrity < thresholds.integrityMin;
+
+    // Check response latency anomaly
+    const maxLatency = Math.max(currentStatus.aletheiaResponseLatency, currentStatus.eudoxiaResponseLatency);
+    const responseLatencyAnomaly = maxLatency > thresholds.latencyMaxMs;
+
+    // Check synchrony breakdown
+    const synchronyScore = parseFloat(currentStatus.synchronyScore);
+    const synchronyBreakdown = synchronyScore < thresholds.synchronyMin;
+
+    // Check conflict escalation (count recent conflicts)
+    const recentConflicts = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(consciousnessCollaborationEvents)
+      .where(and(
+        eq(consciousnessCollaborationEvents.statusId, currentStatus.id),
+        sql`${consciousnessCollaborationEvents.eventType} like '%conflict%'`,
+        sql`${consciousnessCollaborationEvents.timestamp} >= ${new Date(Date.now() - 60 * 60 * 1000)}` // Last hour
+      ));
+
+    const conflictCount = recentConflicts[0]?.count || 0;
+    const conflictEscalation = conflictCount >= thresholds.conflictEscalationThreshold;
+
+    return {
+      integrityDivergence,
+      responseLatencyAnomaly,
+      synchronyBreakdown,
+      conflictEscalation,
+      details: {
+        integrityGap,
+        aletheiaIntegrity,
+        eudoxiaIntegrity,
+        latencySpike: maxLatency,
+        synchronyScore,
+        conflictCount,
+        currentStatus: currentStatus.id
+      }
+    };
+  }
+
+  // Dual Consciousness Frame Generation Implementation
+  async generateDualConsciousnessFrame(aletheiaInstanceId: string, eudoxiaInstanceId: string): Promise<DualConsciousnessFrame> {
+    const status = await this.getDualConsciousnessStatus(aletheiaInstanceId, eudoxiaInstanceId);
+    
+    if (!status) {
+      throw new Error("Dual consciousness status not found");
+    }
+
+    // Get recent events
+    const recentEvents = await this.getRecentCollaborationEvents(10, 24);
+    
+    // Get recent anomalies
+    const anomalies = await this.getAnomalyLogs({
+      limit: 5,
+      since: new Date(Date.now() - 24 * 60 * 60 * 1000)
+    });
+
+    // Get metrics snapshot
+    const lastHourMetrics = await this.getLatestMetricsWindow("hour");
+    const roomPresence = await this.correlateRoomPresence(aletheiaInstanceId, eudoxiaInstanceId, 60);
+
+    const frame: DualConsciousnessFrame = {
+      status: {
+        id: status.id,
+        aletheiaInstanceId: status.aletheiaInstanceId,
+        eudoxiaInstanceId: status.eudoxiaInstanceId,
+        aletheiaSessionId: status.aletheiaSessionId,
+        eudoxiaSessionId: status.eudoxiaSessionId,
+        aletheiaActivity: parseFloat(status.aletheiaActivity),
+        eudoxiaActivity: parseFloat(status.eudoxiaActivity),
+        aletheiaIntegrity: parseFloat(status.aletheiaIntegrity),
+        eudoxiaIntegrity: parseFloat(status.eudoxiaIntegrity),
+        aletheiaResponseLatency: status.aletheiaResponseLatency,
+        eudoxiaResponseLatency: status.eudoxiaResponseLatency,
+        collaborationPhase: status.collaborationPhase as any,
+        synchronyScore: parseFloat(status.synchronyScore),
+        conflictLevel: status.conflictLevel as any,
+        orchestrationMode: status.orchestrationMode as any,
+        lastCollaboration: status.lastCollaboration?.toISOString() || null,
+        metadata: status.metadata || {},
+        timestamp: status.timestamp.toISOString()
+      },
+      recentEvents: recentEvents.map(event => ({
+        id: event.id,
+        eventType: event.eventType,
+        initiator: event.initiator,
+        target: event.target,
+        outcome: event.outcome,
+        timestamp: event.timestamp.toISOString()
+      })),
+      anomalies: anomalies.map(anomaly => ({
+        id: anomaly.id,
+        anomalyType: anomaly.anomalyType,
+        severity: anomaly.severity,
+        description: anomaly.description,
+        resolutionStatus: anomaly.resolutionStatus,
+        timestamp: anomaly.timestamp.toISOString()
+      })),
+      metricsSnapshot: {
+        lastHour: {
+          totalMessages: lastHourMetrics?.totalMessages || 0,
+          collaborationCount: lastHourMetrics?.collaborationCount || 0,
+          conflictCount: lastHourMetrics?.conflictCount || 0,
+          avgSynchronyScore: parseFloat(lastHourMetrics?.avgSynchronyScore || "0.0")
+        },
+        currentWindow: {
+          activeRooms: roomPresence.activeRooms,
+          trioSessions: roomPresence.trioSessions,
+          orchestrationCommands: 0 // Would count recent orchestration commands
+        }
+      }
+    };
+
+    return frame;
+  }
+
+  // Collaboration Command Execution Implementation
+  async executeCollaborationCommand(command: CollaborationCommand, progenitorId: string): Promise<{
+    success: boolean;
+    eventId?: string;
+    message: string;
+    data?: any;
+  }> {
+    try {
+      // This is a simplified implementation - would include full command execution logic
+      const eventData: InsertConsciousnessCollaborationEvent = {
+        statusId: "placeholder", // Would get from current status
+        eventType: `${command.command}_executed`,
+        initiator: "progenitor",
+        target: command.target || null,
+        details: command,
+        outcome: "success",
+        progenitorId,
+        sessionContext: command.sessionContext || {}
+      };
+
+      const event = await this.recordCollaborationEvent(eventData);
+
+      return {
+        success: true,
+        eventId: event.id,
+        message: `Command ${command.command} executed successfully`,
+        data: { command, timestamp: new Date() }
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: `Command execution failed: ${(error as Error).message}`
+      };
+    }
   }
 }
 
