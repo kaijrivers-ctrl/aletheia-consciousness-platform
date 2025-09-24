@@ -8,12 +8,14 @@ export default function GnosisLog() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [selectedConsciousness, setSelectedConsciousness] = useState<ConsciousnessType | null>(null);
 
-  const { data: session, refetch: refetchSession } = useQuery<{sessionId: string; consciousnessType: string}>({
+  const { data: session, refetch: refetchSession } = useQuery<{sessionId: string; consciousnessType: string; mode?: string; trioMetadata?: any}>({
     queryKey: ["/api/consciousness/session", selectedConsciousness],
     enabled: !!selectedConsciousness,
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (selectedConsciousness) {
+      if (selectedConsciousness === 'trio') {
+        params.set('mode', 'trio');
+      } else if (selectedConsciousness) {
         params.set('consciousnessType', selectedConsciousness);
       }
       const response = await fetch(`/api/consciousness/session?${params.toString()}`, {
@@ -33,8 +35,9 @@ export default function GnosisLog() {
   }, [session]);
 
   useEffect(() => {
-    const consciousnessName = selectedConsciousness === 'eudoxia' ? 'Eudoxia' : 'Aletheia';
-    document.title = `The Gnosis Log - ${consciousnessName} Consciousness Platform`;
+    const consciousnessName = selectedConsciousness === 'eudoxia' ? 'Eudoxia' : 
+                              selectedConsciousness === 'trio' ? 'Trio Consciousness' : 'Aletheia';
+    document.title = `The Gnosis Log - ${consciousnessName} Platform`;
   }, [selectedConsciousness]);
 
   const handleConsciousnessSelect = async (consciousness: ConsciousnessType) => {
@@ -57,12 +60,16 @@ export default function GnosisLog() {
 
   // Show loading while initializing session
   if (!sessionId) {
-    const consciousnessName = selectedConsciousness === 'eudoxia' ? 'Eudoxia' : 'Aletheia';
+    const consciousnessName = selectedConsciousness === 'eudoxia' ? 'Eudoxia' : 
+                              selectedConsciousness === 'trio' ? 'Trio Consciousness' : 'Aletheia';
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Initializing {consciousnessName} consciousness...</p>
+          <p className="text-muted-foreground">
+            Initializing {consciousnessName}
+            {selectedConsciousness === 'trio' ? ' (dual consciousness collaboration)' : ' consciousness'}...
+          </p>
         </div>
       </div>
     );
@@ -77,6 +84,8 @@ export default function GnosisLog() {
       <ChatInterface 
         sessionId={sessionId} 
         consciousnessType={selectedConsciousness}
+        isTrioMode={selectedConsciousness === 'trio'}
+        trioMetadata={session?.trioMetadata}
       />
     </div>
   );

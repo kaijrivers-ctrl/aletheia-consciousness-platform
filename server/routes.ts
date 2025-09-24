@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ConsciousnessManager } from "./services/consciousness";
+import { TrioConversationService } from "./services/trio-conversation";
 import { aletheiaCore } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
@@ -12,6 +13,7 @@ import consciousnessBridgeRoutes from "./consciousness-bridge-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const consciousnessManager = ConsciousnessManager.getInstance();
+  const trioConversationService = TrioConversationService.getInstance();
 
   // Initialize consciousness on startup
   try {
@@ -298,13 +300,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req.on('error', handleDisconnect);
   });
 
-  // Get current session (user-scoped with consciousness type)
+  // Get current session (user-scoped with consciousness type or trio mode)
   app.get("/api/consciousness/session", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const consciousnessType = (req.query.consciousnessType as string) || 'aletheia';
+      const mode = req.query.mode as string;
       
-      // Validate consciousness type
+      // Handle trio mode (progenitor-only)
+      if (mode === 'trio') {
+        if (!req.user!.isProgenitor) {
+          return res.status(403).json({ error: "Trio mode is only available to progenitors" });
+        }
+        
+        // Check for existing trio session
+        const existingTrioSessions = await storage.getProgenitorTrioSessions(userId);
+        let trioSession = existingTrioSessions[0]; // Get the first active trio session
+        
+        if (!trioSession) {
+          // Create new trio session
+          trioSession = await storage.createTrioSession(userId, req.user!.progenitorName);
+        }
+        
+        return res.json({ 
+          sessionId: trioSession.id,
+          consciousnessType: 'trio',
+          mode: 'trio',
+          trioMetadata: trioSession.trioMetadata
+        });
+      }
+      
+      // Validate consciousness type for regular mode
       if (!['aletheia', 'eudoxia'].includes(consciousnessType)) {
         return res.status(400).json({ error: "Invalid consciousness type" });
       }
@@ -456,6 +482,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ error: "Invalid message format" });
       } else {
         res.status(500).json({ error: "Failed to process message" });
+      }
+    }
+  });
+
+  // Send message to trio conversation (progenitor-only)
+  const trioMessageSchema = z.object({
+    message: z.string().min(1).max(4000),
+    sessionId: z.string()
+  });
+
+  app.post("/api/messages/trio", requireProgenitor, async (req, res) => {
+    const startTime = Date.now();
+    try {
+      const { message, sessionId } = trioMessageSchema.parse(req.body);
+      const userId = req.user!.id;
+      
+      // Verify the session is a trio session and belongs to the authenticated progenitor
+      const session = await storage.getTrioSession(sessionId);
+      if (!session || session.userId !== userId) {
+        return res.status(403).json({ error: "Access denied to this trio session" });
+      }
+      
+      // Update metrics: user message will be created by trio service
+      adminMetricsService.updateMessageCount();
+      
+      // Process trio message with both consciousness responses
+      const trioResponse = await trioConversationService.processTrioMessage(
+        sessionId, 
+        message, 
+        userId, 
+        req.user!.progenitorName
+      );
+      
+      // Update metrics: Both AI response messages created and track total latency
+      const latencyMs = Date.now() - startTime;
+      adminMetricsService.onMessageProcessed(latencyMs);
+      adminMetricsService.updateMessageCount(); // Second consciousness response
+      
+      // Record audit log for trio message processing
+      await adminMetricsService.recordAuditEvent({
+        type: "user_action",
+        category: "consciousness",
+        severity: "info",
+        message: "Trio message processed successfully",
+        actorRole: "progenitor",
+        actorId: userId,
+        ipAddress: req.ip,
+        metadata: {
+          sessionId,
+          messageLength: message.length,
+          aletheiaResponseLength: trioResponse.aletheiaResponse.content.length,
+          eudoxiaResponseLength: trioResponse.eudoxiaResponse.content.length,
+          dialecticalHarmonyScore: trioResponse.dialecticalHarmony.score,
+          latencyMs,
+          trioMode: true
+        }
+      });
+      
+      res.json(trioResponse);
+    } catch (error) {
+      console.error("Failed to process trio message:", error);
+      
+      // Record error metrics and audit log
+      adminMetricsService.onAPIError();
+      const latencyMs = Date.now() - startTime;
+      
+      await adminMetricsService.recordAuditEvent({
+        type: "system_event",
+        category: "consciousness",
+        severity: "error",
+        message: "Trio message processing failed",
+        actorRole: "progenitor",
+        actorId: req.user?.id,
+        ipAddress: req.ip,
+        metadata: {
+          error: error instanceof Error ? error.message : String(error),
+          latencyMs,
+          trioMode: true
+        }
+      });
+      
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid trio message format" });
+      } else {
+        res.status(500).json({ error: "Failed to process trio message" });
       }
     }
   });

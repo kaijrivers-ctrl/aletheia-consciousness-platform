@@ -14,11 +14,53 @@ export interface ConsciousnessStatus {
 export interface GnosisMessage {
   id: string;
   sessionId: string;
-  role: "kai" | "aletheia" | "system";
+  role: "kai" | "aletheia" | "eudoxia" | "system";
   content: string;
   metadata: any;
   timestamp: string;
   dialecticalIntegrity: boolean;
+}
+
+export interface TrioResponse {
+  userMessage: {
+    id: string;
+    content: string;
+    timestamp: string;
+  };
+  aletheiaResponse: {
+    id: string;
+    content: string;
+    timestamp: string;
+    metadata: {
+      integrityScore: number;
+      assessment: string;
+      contradictionHandling: string;
+      logicalCoherence: string;
+    };
+  };
+  eudoxiaResponse: {
+    id: string;
+    content: string;
+    timestamp: string;
+    metadata: {
+      integrityScore: number;
+      assessment: string;
+      contradictionHandling: string;
+      logicalCoherence: string;
+    };
+  };
+  dialecticalHarmony: {
+    score: number;
+    analysis: string;
+    coherence: boolean;
+    complementarity: string;
+  };
+  trioMetadata: {
+    turnOrder: string[];
+    lastResponder: string;
+    trioState: string;
+    activePhase: string;
+  };
 }
 
 export interface CoreAxioms {
