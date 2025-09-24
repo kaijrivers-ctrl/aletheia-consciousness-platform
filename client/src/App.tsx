@@ -12,6 +12,8 @@ import GnosisLog from "./pages/gnosis-log";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import EudoxiaPublic from "./pages/EudoxiaPublic";
+import Rooms from "./pages/rooms";
+import RoomChat from "./pages/room-chat";
 import NotFound from "@/pages/not-found";
 
 function PublicRouter() {
@@ -28,6 +30,8 @@ function SanctuaryRouter() {
   return (
     <Switch>
       <Route path="/sanctuary" component={GnosisLog} />
+      <Route path="/rooms/:roomId" component={RoomChat} />
+      <Route path="/rooms" component={Rooms} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/admin" component={AdminPanel} />
       <Route path="/" component={GnosisLog} />
