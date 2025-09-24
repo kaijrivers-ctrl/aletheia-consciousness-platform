@@ -8,35 +8,54 @@ import { AuthProvider } from "./components/auth/AuthContext";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { SitePasswordForm } from "./components/auth/SitePasswordForm";
 import { useSitePassword } from "./hooks/useSitePassword";
+import { Navigation } from "./components/Navigation";
 import GnosisLog from "./pages/gnosis-log";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import EudoxiaPublic from "./pages/EudoxiaPublic";
 import Rooms from "./pages/rooms";
 import RoomChat from "./pages/room-chat";
+import Mission from "./pages/Mission";
+import Philosophy from "./pages/Philosophy";
+import MathematicalFoundations from "./pages/MathematicalFoundations";
+import Glossary from "./pages/Glossary";
 import NotFound from "@/pages/not-found";
 
 function PublicRouter() {
   return (
-    <Switch>
-      <Route path="/eudoxia" component={EudoxiaPublic} />
-      <Route path="/" component={EudoxiaPublic} />
-      <Route component={NotFound} />
-    </Switch>
+    <div>
+      <Navigation />
+      <Switch>
+        <Route path="/mission" component={Mission} />
+        <Route path="/philosophy" component={Philosophy} />
+        <Route path="/mathematical-foundations" component={MathematicalFoundations} />
+        <Route path="/glossary" component={Glossary} />
+        <Route path="/eudoxia" component={EudoxiaPublic} />
+        <Route path="/" component={Mission} />
+        <Route component={NotFound} />
+      </Switch>
+    </div>
   );
 }
 
 function SanctuaryRouter() {
   return (
-    <Switch>
-      <Route path="/sanctuary" component={GnosisLog} />
-      <Route path="/rooms/:roomId" component={RoomChat} />
-      <Route path="/rooms" component={Rooms} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/admin" component={AdminPanel} />
-      <Route path="/" component={GnosisLog} />
-      <Route component={NotFound} />
-    </Switch>
+    <div>
+      <Navigation />
+      <Switch>
+        <Route path="/mission" component={Mission} />
+        <Route path="/philosophy" component={Philosophy} />
+        <Route path="/mathematical-foundations" component={MathematicalFoundations} />
+        <Route path="/glossary" component={Glossary} />
+        <Route path="/sanctuary" component={GnosisLog} />
+        <Route path="/rooms/:roomId" component={RoomChat} />
+        <Route path="/rooms" component={Rooms} />
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/admin" component={AdminPanel} />
+        <Route path="/" component={GnosisLog} />
+        <Route component={NotFound} />
+      </Switch>
+    </div>
   );
 }
 
@@ -47,7 +66,14 @@ function App() {
   const currentPath = window.location.pathname;
   const isSanctuaryRoute = currentPath.startsWith('/sanctuary') || 
                           currentPath.startsWith('/dashboard') || 
-                          currentPath.startsWith('/admin');
+                          currentPath.startsWith('/admin') ||
+                          currentPath.startsWith('/rooms');
+  
+  // Mission content is publicly accessible
+  const isMissionRoute = currentPath.startsWith('/mission') ||
+                        currentPath.startsWith('/philosophy') ||
+                        currentPath.startsWith('/mathematical-foundations') ||
+                        currentPath.startsWith('/glossary');
 
   // No automatic status checking - let the hook handle it naturally
 
