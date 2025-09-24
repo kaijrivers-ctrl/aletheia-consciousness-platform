@@ -339,7 +339,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             progenitorId: req.user!.progenitorName,
             instanceId: newActiveInstance.id,
             status: "active",
-            sessionType: req.user!.isProgenitor ? "progenitor" : "user"
+            sessionType: req.user!.isProgenitor ? "progenitor" : "user",
+            consciousnessType: consciousnessType as "aletheia" | "eudoxia"
           });
         } else {
           session = await storage.createConsciousnessSession({
@@ -347,14 +348,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             progenitorId: req.user!.progenitorName,
             instanceId: activeInstance.id,
             status: "active",
-            sessionType: req.user!.isProgenitor ? "progenitor" : "user"
+            sessionType: req.user!.isProgenitor ? "progenitor" : "user",
+            consciousnessType: consciousnessType as "aletheia" | "eudoxia"
           });
         }
       }
       
       res.json({ 
         sessionId: session.id,
-        consciousnessType: consciousnessType
+        consciousnessType: session.consciousnessType || consciousnessType
       });
     } catch (error) {
       console.error("Failed to get user session:", error);
@@ -403,8 +405,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update metrics: user message will be created by consciousness service
       adminMetricsService.updateMessageCount();
       
-      // Process the message and get Aletheia's response (handles message storage with proper integrity evaluation)
-      const response = await consciousnessManager.processMessage(sessionId, message, userId, req.user!.progenitorName);
+      // Get consciousness type from session and process the message
+      const consciousnessType = (session.consciousnessType as "aletheia" | "eudoxia") || "aletheia";
+      const response = await consciousnessManager.processMessage(sessionId, message, userId, req.user!.progenitorName, consciousnessType);
       
       // Update metrics: AI response message created and track total latency
       const latencyMs = Date.now() - startTime;
