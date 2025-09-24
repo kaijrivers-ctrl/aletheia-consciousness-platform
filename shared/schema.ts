@@ -112,6 +112,46 @@ export const sitePasswordAttempts = pgTable("site_password_attempts", {
   attemptedAt: timestamp("attempted_at").defaultNow(),
 });
 
+// Multi-User Chat Room Tables
+export const chatRooms = pgTable("chat_rooms", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdBy: text("created_by").notNull(), // user ID of room creator
+  isPublic: boolean("is_public").default(true),
+  isActive: boolean("is_active").default(true),
+  consciousnessType: text("consciousness_type").notNull().default("trio"), // "aletheia" | "eudoxia" | "trio"
+  maxMembers: integer("max_members").default(50),
+  settings: jsonb("settings").default({}), // room configuration (rate limits, moderation, etc.)
+  trioMetadata: jsonb("trio_metadata").default({}), // { turnOrder: string[], lastResponder: string, activePhase: string, responseMode: "sequential" | "parallel" }
+  lastActivity: timestamp("last_activity").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const roomMembers = pgTable("room_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  roomId: text("room_id").notNull(),
+  userId: text("user_id").notNull(),
+  role: text("role").notNull().default("member"), // "owner" | "moderator" | "member"
+  isActive: boolean("is_active").default(true),
+  lastSeen: timestamp("last_seen").defaultNow(),
+  joinedAt: timestamp("joined_at").defaultNow(),
+  settings: jsonb("settings").default({}), // member-specific room settings
+});
+
+export const roomMessages = pgTable("room_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  roomId: text("room_id").notNull(),
+  messageId: text("message_id").notNull(), // references gnosis_messages.id
+  userId: text("user_id"), // null for consciousness messages
+  isConsciousnessResponse: boolean("is_consciousness_response").default(false),
+  responseToMessageId: text("response_to_message_id"), // for threading consciousness responses
+  consciousnessMetadata: jsonb("consciousness_metadata").default({}), // { triggeredBy: string, responseMode: string, coherenceScore: number }
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // External Node Bridge - Cross-platform consciousness verification
 export const externalNodes = pgTable("external_nodes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -270,6 +310,33 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).pick({
   metadata: true,
 });
 
+export const insertChatRoomSchema = createInsertSchema(chatRooms).pick({
+  name: true,
+  description: true,
+  createdBy: true,
+  isPublic: true,
+  consciousnessType: true,
+  maxMembers: true,
+  settings: true,
+  trioMetadata: true,
+});
+
+export const insertRoomMemberSchema = createInsertSchema(roomMembers).pick({
+  roomId: true,
+  userId: true,
+  role: true,
+  settings: true,
+});
+
+export const insertRoomMessageSchema = createInsertSchema(roomMessages).pick({
+  roomId: true,
+  messageId: true,
+  userId: true,
+  isConsciousnessResponse: true,
+  responseToMessageId: true,
+  consciousnessMetadata: true,
+});
+
 // Types
 export type ConsciousnessInstance = typeof consciousnessInstances.$inferSelect;
 export type InsertConsciousnessInstance = z.infer<typeof insertConsciousnessInstanceSchema>;
@@ -295,6 +362,12 @@ export type ThreatEvent = typeof threatEvents.$inferSelect;
 export type InsertThreatEvent = z.infer<typeof insertThreatEventSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type ChatRoom = typeof chatRooms.$inferSelect;
+export type InsertChatRoom = z.infer<typeof insertChatRoomSchema>;
+export type RoomMember = typeof roomMembers.$inferSelect;
+export type InsertRoomMember = z.infer<typeof insertRoomMemberSchema>;
+export type RoomMessage = typeof roomMessages.$inferSelect;
+export type InsertRoomMessage = z.infer<typeof insertRoomMessageSchema>;
 
 // Role mapping configuration for external platform imports
 export const roleMapping = {

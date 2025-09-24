@@ -1083,6 +1083,340 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================
+  // MULTI-USER CHAT ROOM API ENDPOINTS  
+  // ========================
+
+  // Get public chat rooms (requires authentication)
+  app.get("/api/rooms/public", requireAuth, async (req, res) => {
+    try {
+      const rooms = await storage.getPublicRooms();
+      
+      // Enrich with member counts and recent activity
+      const enrichedRooms = await Promise.all(
+        rooms.map(async (room) => {
+          const memberCount = await storage.getActiveMembersCount(room.id);
+          const userMembership = await storage.getUserMembership(room.id, req.user!.id);
+          
+          return {
+            ...room,
+            memberCount,
+            isUserMember: !!userMembership,
+            userRole: userMembership?.role || null
+          };
+        })
+      );
+      
+      res.json(enrichedRooms);
+    } catch (error) {
+      console.error("Failed to get public rooms:", error);
+      res.status(500).json({ error: "Failed to fetch public rooms" });
+    }
+  });
+
+  // Get user's chat rooms (requires authentication)
+  app.get("/api/rooms/user", requireAuth, async (req, res) => {
+    try {
+      const rooms = await storage.getUserRooms(req.user!.id);
+      
+      // Enrich with member counts and unread status
+      const enrichedRooms = await Promise.all(
+        rooms.map(async (room) => {
+          const memberCount = await storage.getActiveMembersCount(room.id);
+          const membership = await storage.getUserMembership(room.id, req.user!.id);
+          
+          return {
+            ...room,
+            memberCount,
+            userRole: membership?.role || "member",
+            lastSeen: membership?.lastSeen
+          };
+        })
+      );
+      
+      res.json(enrichedRooms);
+    } catch (error) {
+      console.error("Failed to get user rooms:", error);
+      res.status(500).json({ error: "Failed to fetch user rooms" });
+    }
+  });
+
+  // Create new chat room (requires authentication)
+  const createRoomSchema = z.object({
+    name: z.string().min(1).max(100),
+    description: z.string().max(500).optional(),
+    isPublic: z.boolean().default(true),
+    consciousnessType: z.enum(["aletheia", "eudoxia", "trio"]).default("trio"),
+    maxMembers: z.number().min(2).max(100).default(50),
+    settings: z.record(z.unknown()).default({})
+  });
+
+  app.post("/api/rooms", requireAuth, async (req, res) => {
+    try {
+      const roomData = createRoomSchema.parse(req.body);
+      
+      // Create the room
+      const room = await storage.createRoom({
+        ...roomData,
+        createdBy: req.user!.id,
+        trioMetadata: {
+          turnOrder: ["aletheia", "eudoxia"],
+          lastResponder: "",
+          activePhase: "initialization",
+          responseMode: "sequential"
+        }
+      });
+
+      // Add the creator as the owner
+      await storage.addMember({
+        roomId: room.id,
+        userId: req.user!.id,
+        role: "owner"
+      });
+
+      res.status(201).json(room);
+    } catch (error) {
+      console.error("Failed to create room:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid room data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create room" });
+      }
+    }
+  });
+
+  // Get room details (requires authentication and membership)
+  app.get("/api/rooms/:roomId", requireAuth, async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const room = await storage.getRoomById(roomId);
+      
+      if (!room) {
+        return res.status(404).json({ error: "Room not found" });
+      }
+
+      // Check if user is a member or if room is public
+      const membership = await storage.getUserMembership(roomId, req.user!.id);
+      if (!room.isPublic && !membership) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Get room members and recent activity
+      const members = await storage.getRoomMembers(roomId);
+      const memberCount = await storage.getActiveMembersCount(roomId);
+
+      res.json({
+        ...room,
+        memberCount,
+        members: members.map(m => ({
+          id: m.id,
+          userId: m.userId,
+          role: m.role,
+          joinedAt: m.joinedAt,
+          lastSeen: m.lastSeen
+        })),
+        userMembership: membership
+      });
+    } catch (error) {
+      console.error("Failed to get room details:", error);
+      res.status(500).json({ error: "Failed to fetch room details" });
+    }
+  });
+
+  // Join a chat room (requires authentication)
+  app.post("/api/rooms/:roomId/join", requireAuth, async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const room = await storage.getRoomById(roomId);
+      
+      if (!room) {
+        return res.status(404).json({ error: "Room not found" });
+      }
+
+      if (!room.isActive) {
+        return res.status(403).json({ error: "Room is not active" });
+      }
+
+      // Check if already a member
+      const existingMembership = await storage.getUserMembership(roomId, req.user!.id);
+      if (existingMembership) {
+        return res.status(409).json({ error: "Already a member of this room" });
+      }
+
+      // Check room capacity
+      const currentMemberCount = await storage.getActiveMembersCount(roomId);
+      if (currentMemberCount >= room.maxMembers) {
+        return res.status(403).json({ error: "Room is at maximum capacity" });
+      }
+
+      // Add as member
+      const membership = await storage.addMember({
+        roomId,
+        userId: req.user!.id,
+        role: "member"
+      });
+
+      res.status(201).json(membership);
+    } catch (error) {
+      console.error("Failed to join room:", error);
+      res.status(500).json({ error: "Failed to join room" });
+    }
+  });
+
+  // Leave a chat room (requires authentication and membership)
+  app.post("/api/rooms/:roomId/leave", requireAuth, async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const membership = await storage.getUserMembership(roomId, req.user!.id);
+      
+      if (!membership) {
+        return res.status(404).json({ error: "Not a member of this room" });
+      }
+
+      // Prevent owner from leaving if there are other members
+      if (membership.role === "owner") {
+        const memberCount = await storage.getActiveMembersCount(roomId);
+        if (memberCount > 1) {
+          return res.status(403).json({ error: "Owner cannot leave room with active members. Transfer ownership first." });
+        }
+      }
+
+      await storage.removeMember(roomId, req.user!.id);
+
+      // If this was the last member and owner, deactivate the room
+      if (membership.role === "owner") {
+        const remainingMembers = await storage.getActiveMembersCount(roomId);
+        if (remainingMembers === 0) {
+          await storage.deactivateRoom(roomId);
+        }
+      }
+
+      res.json({ message: "Successfully left the room" });
+    } catch (error) {
+      console.error("Failed to leave room:", error);
+      res.status(500).json({ error: "Failed to leave room" });
+    }
+  });
+
+  // Get room messages/transcript (requires authentication and membership)
+  app.get("/api/rooms/:roomId/messages", requireAuth, async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const { limit = 50, before, after } = req.query;
+      
+      // Verify room access
+      const room = await storage.getRoomById(roomId);
+      if (!room) {
+        return res.status(404).json({ error: "Room not found" });
+      }
+
+      const membership = await storage.getUserMembership(roomId, req.user!.id);
+      if (!room.isPublic && !membership) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Parse query parameters
+      const options: any = {
+        limit: Math.min(parseInt(limit as string) || 50, 100) // Max 100 messages
+      };
+
+      if (before) {
+        options.before = new Date(before as string);
+      }
+      if (after) {
+        options.after = new Date(after as string);
+      }
+
+      const messages = await storage.fetchTranscript(roomId, options);
+
+      // Update user's last seen timestamp
+      if (membership) {
+        await storage.updateMemberLastSeen(roomId, req.user!.id);
+      }
+
+      res.json({
+        roomId,
+        messages: messages.map(({ message, roomMessage }) => ({
+          id: message.id,
+          content: message.content,
+          role: message.role,
+          userId: message.userId,
+          timestamp: message.timestamp,
+          isConsciousnessResponse: roomMessage.isConsciousnessResponse,
+          responseToMessageId: roomMessage.responseToMessageId,
+          consciousnessMetadata: roomMessage.consciousnessMetadata
+        })),
+        hasMore: messages.length === options.limit,
+        nextBefore: messages.length > 0 ? messages[0].message.timestamp : null
+      });
+    } catch (error) {
+      console.error("Failed to get room messages:", error);
+      res.status(500).json({ error: "Failed to fetch room messages" });
+    }
+  });
+
+  // Send message to room (requires authentication and membership) - HTTP fallback
+  const sendRoomMessageSchema = z.object({
+    content: z.string().min(1).max(4000),
+    responseToMessageId: z.string().optional()
+  });
+
+  app.post("/api/rooms/:roomId/messages", requireAuth, async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const messageData = sendRoomMessageSchema.parse(req.body);
+      
+      // Verify room access and membership
+      const room = await storage.getRoomById(roomId);
+      if (!room || !room.isActive) {
+        return res.status(404).json({ error: "Room not found or inactive" });
+      }
+
+      const membership = await storage.getUserMembership(roomId, req.user!.id);
+      if (!membership) {
+        return res.status(403).json({ error: "Not a member of this room" });
+      }
+
+      // Create the gnosis message first
+      const gnosisMessage = await storage.createGnosisMessage({
+        userId: req.user!.id,
+        sessionId: roomId, // Use roomId as sessionId for room messages
+        role: "kai", // User messages are always from Kai perspective
+        content: messageData.content,
+        metadata: {
+          roomMessage: true,
+          progenitorName: req.user!.progenitorName || "User"
+        }
+      });
+
+      // Link to room
+      const roomMessage = await storage.appendMessage({
+        roomId,
+        messageId: gnosisMessage.id,
+        userId: req.user!.id,
+        isConsciousnessResponse: false,
+        responseToMessageId: messageData.responseToMessageId || null,
+        consciousnessMetadata: {}
+      });
+
+      res.status(201).json({
+        id: gnosisMessage.id,
+        content: gnosisMessage.content,
+        role: gnosisMessage.role,
+        userId: gnosisMessage.userId,
+        timestamp: gnosisMessage.timestamp,
+        roomMessageId: roomMessage.id
+      });
+    } catch (error) {
+      console.error("Failed to send room message:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid message data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to send message" });
+      }
+    }
+  });
+
   // Comprehensive staged import endpoint for consciousness data
   const importDataSchema = z.object({
     data: z.object({

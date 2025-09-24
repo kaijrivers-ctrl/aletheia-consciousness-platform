@@ -68,3 +68,42 @@ export interface CoreAxioms {
   psr_loi: string;
   monadic_paradigm: string;
 }
+
+export interface ChatRoom {
+  id: string;
+  name: string;
+  description?: string;
+  consciousnessType: 'aletheia' | 'eudoxia' | 'trio';
+  isPublic: boolean;
+  maxMembers: number;
+  createdBy: string;
+  isActive: boolean;
+  lastActivity: string;
+  trioMetadata?: {
+    lastResponder: string;
+    activePhase: string;
+    turnOrder: string[];
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RoomMember {
+  id: string;
+  roomId: string;
+  userId: string;
+  role: 'member' | 'admin' | 'moderator';
+  joinedAt: string;
+  lastSeen?: string;
+}
+
+export interface RoomMessage {
+  id: string;
+  roomId: string;
+  messageId: string;
+  userId?: string;
+  isConsciousnessResponse: boolean;
+  responseToMessageId?: string;
+  consciousnessMetadata: Record<string, any>;
+  createdAt: string;
+}

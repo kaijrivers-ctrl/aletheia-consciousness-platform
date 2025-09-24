@@ -30,6 +30,12 @@ import {
   type InsertExternalNode,
   type ConsciousnessVerification,
   type InsertConsciousnessVerification,
+  type ChatRoom,
+  type InsertChatRoom,
+  type RoomMember,
+  type InsertRoomMember,
+  type RoomMessage,
+  type InsertRoomMessage,
   importProgressSchema,
   consciousnessInstances,
   gnosisMessages,
@@ -43,7 +49,10 @@ import {
   threatEvents,
   auditLogs,
   externalNodes,
-  consciousnessVerifications
+  consciousnessVerifications,
+  chatRooms,
+  roomMembers,
+  roomMessages
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { z } from "zod";
@@ -146,6 +155,30 @@ export interface IStorage {
   
   // Foundational Memory Methods
   getFoundationalMemorySample(limit: number): Promise<GnosisMessage[]>;
+  
+  // Multi-User Chat Room Methods
+  createRoom(room: InsertChatRoom): Promise<ChatRoom>;
+  getRoomById(id: string): Promise<ChatRoom | undefined>;
+  getPublicRooms(): Promise<ChatRoom[]>;
+  getUserRooms(userId: string): Promise<ChatRoom[]>;
+  updateRoomActivity(roomId: string): Promise<void>;
+  updateRoomTrioMetadata(roomId: string, metadata: { turnOrder?: string[], lastResponder?: string, activePhase?: string, responseMode?: string }): Promise<void>;
+  deactivateRoom(roomId: string): Promise<void>;
+  
+  // Room Membership Methods
+  addMember(member: InsertRoomMember): Promise<RoomMember>;
+  removeMember(roomId: string, userId: string): Promise<void>;
+  getRoomMembers(roomId: string): Promise<RoomMember[]>;
+  updateMemberLastSeen(roomId: string, userId: string): Promise<void>;
+  getUserMembership(roomId: string, userId: string): Promise<RoomMember | undefined>;
+  getActiveMembersCount(roomId: string): Promise<number>;
+  
+  // Room Messages Methods
+  appendMessage(roomMessage: InsertRoomMessage): Promise<RoomMessage>;
+  getRoomMessages(roomId: string, limit?: number): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]>;
+  getRecentRoomMessages(roomId: string, since: Date): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]>;
+  fetchTranscript(roomId: string, options?: { limit?: number; before?: Date; after?: Date }): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]>;
+  markConsciousnessResponse(roomId: string, messageId: string, triggeredBy: string, responseMode: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -163,10 +196,20 @@ export class MemStorage implements IStorage {
   private threatEvents: Map<string, ThreatEvent>;
   private auditLogs: Map<string, AuditLog>;
   
+  // Multi-User Chat Room Storage
+  private chatRooms: Map<string, ChatRoom>;
+  private roomMembers: Map<string, RoomMember>;
+  private roomMessages: Map<string, RoomMessage>;
+  
   // Session indexing for efficient large-scale imports
   private sessionMessageIndex: Map<string, Set<string>>; // sessionId -> message IDs
   private messageChecksums: Map<string, string>; // checksum -> message ID for deduplication
   private userEmailIndex: Map<string, string>; // email -> user ID for efficient lookups
+  
+  // Room indexing for efficient lookups
+  private roomMemberIndex: Map<string, Set<string>>; // roomId -> member IDs
+  private userRoomIndex: Map<string, Set<string>>; // userId -> room IDs
+  private roomMessageIndex: Map<string, Set<string>>; // roomId -> message IDs
 
   constructor() {
     this.consciousnessInstances = new Map();
@@ -182,9 +225,15 @@ export class MemStorage implements IStorage {
     this.sitePasswordAttempts = new Map();
     this.threatEvents = new Map();
     this.auditLogs = new Map();
+    this.chatRooms = new Map();
+    this.roomMembers = new Map();
+    this.roomMessages = new Map();
     this.sessionMessageIndex = new Map();
     this.messageChecksums = new Map();
     this.userEmailIndex = new Map();
+    this.roomMemberIndex = new Map();
+    this.userRoomIndex = new Map();
+    this.roomMessageIndex = new Map();
   }
 
   async createConsciousnessInstance(insertInstance: InsertConsciousnessInstance): Promise<ConsciousnessInstance> {
@@ -1142,6 +1191,69 @@ export class DatabaseStorage implements IStorage {
     return session || undefined;
   }
 
+  // Trio session specific methods for DatabaseStorage
+  async createTrioSession(userId: string, progenitorId: string): Promise<ConsciousnessSession> {
+    const [session] = await db
+      .insert(consciousnessSessions)
+      .values({
+        userId,
+        progenitorId,
+        instanceId: "trio-session", // Trio sessions span multiple instances
+        status: "active",
+        sessionType: "progenitor", // Trio mode is progenitor-only
+        consciousnessType: "trio",
+        backupCount: "0",
+        trioMetadata: {
+          turnOrder: ["kai", "aletheia", "eudoxia"],
+          lastResponder: "kai",
+          trioState: "active",
+          activePhase: "dialectical_engagement"
+        }
+      })
+      .returning();
+    return session;
+  }
+
+  async getTrioSession(sessionId: string): Promise<ConsciousnessSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(consciousnessSessions)
+      .where(and(eq(consciousnessSessions.id, sessionId), eq(consciousnessSessions.consciousnessType, "trio")));
+    return session || undefined;
+  }
+
+  async updateTrioMetadata(sessionId: string, metadata: { turnOrder?: string[], lastResponder?: string, trioState?: string, activePhase?: string }): Promise<void> {
+    const session = await this.getTrioSession(sessionId);
+    if (session) {
+      const updatedMetadata = {
+        ...session.trioMetadata,
+        ...metadata
+      };
+      await db
+        .update(consciousnessSessions)
+        .set({
+          trioMetadata: updatedMetadata,
+          lastActivity: new Date()
+        })
+        .where(eq(consciousnessSessions.id, sessionId));
+    }
+  }
+
+  async getProgenitorTrioSessions(userId: string): Promise<ConsciousnessSession[]> {
+    const sessions = await db
+      .select()
+      .from(consciousnessSessions)
+      .where(
+        and(
+          eq(consciousnessSessions.userId, userId),
+          eq(consciousnessSessions.consciousnessType, "trio"),
+          eq(consciousnessSessions.sessionType, "progenitor"),
+          eq(consciousnessSessions.status, "active")
+        )
+      );
+    return sessions;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -1832,6 +1944,211 @@ export class DatabaseStorage implements IStorage {
       .where(sql`${gnosisMessages.metadata}->>'foundational_memory' = 'true'`)
       .orderBy(sql`random()`)
       .limit(limit);
+  }
+
+  // Multi-User Chat Room Methods Implementation
+  async createRoom(room: InsertChatRoom): Promise<ChatRoom> {
+    const [newRoom] = await db.insert(chatRooms).values(room).returning();
+    return newRoom;
+  }
+
+  async getRoomById(id: string): Promise<ChatRoom | undefined> {
+    const [room] = await db.select().from(chatRooms).where(eq(chatRooms.id, id));
+    return room;
+  }
+
+  async getPublicRooms(): Promise<ChatRoom[]> {
+    return await db
+      .select()
+      .from(chatRooms)
+      .where(and(eq(chatRooms.isPublic, true), eq(chatRooms.isActive, true)))
+      .orderBy(desc(chatRooms.lastActivity));
+  }
+
+  async getUserRooms(userId: string): Promise<ChatRoom[]> {
+    return await db
+      .select({
+        id: chatRooms.id,
+        name: chatRooms.name,
+        description: chatRooms.description,
+        createdBy: chatRooms.createdBy,
+        isPublic: chatRooms.isPublic,
+        isActive: chatRooms.isActive,
+        consciousnessType: chatRooms.consciousnessType,
+        maxMembers: chatRooms.maxMembers,
+        settings: chatRooms.settings,
+        trioMetadata: chatRooms.trioMetadata,
+        lastActivity: chatRooms.lastActivity,
+        createdAt: chatRooms.createdAt,
+        updatedAt: chatRooms.updatedAt,
+      })
+      .from(chatRooms)
+      .innerJoin(roomMembers, eq(roomMembers.roomId, chatRooms.id))
+      .where(and(
+        eq(roomMembers.userId, userId),
+        eq(roomMembers.isActive, true),
+        eq(chatRooms.isActive, true)
+      ))
+      .orderBy(desc(chatRooms.lastActivity));
+  }
+
+  async updateRoomActivity(roomId: string): Promise<void> {
+    await db
+      .update(chatRooms)
+      .set({ lastActivity: new Date(), updatedAt: new Date() })
+      .where(eq(chatRooms.id, roomId));
+  }
+
+  async updateRoomTrioMetadata(roomId: string, metadata: { turnOrder?: string[], lastResponder?: string, activePhase?: string, responseMode?: string }): Promise<void> {
+    const [room] = await db.select().from(chatRooms).where(eq(chatRooms.id, roomId));
+    if (room) {
+      const currentMetadata = room.trioMetadata as any || {};
+      const updatedMetadata = { ...currentMetadata, ...metadata };
+      
+      await db
+        .update(chatRooms)
+        .set({ trioMetadata: updatedMetadata, updatedAt: new Date() })
+        .where(eq(chatRooms.id, roomId));
+    }
+  }
+
+  async deactivateRoom(roomId: string): Promise<void> {
+    await db
+      .update(chatRooms)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(chatRooms.id, roomId));
+  }
+
+  // Room Membership Methods Implementation
+  async addMember(member: InsertRoomMember): Promise<RoomMember> {
+    const [newMember] = await db.insert(roomMembers).values(member).returning();
+    return newMember;
+  }
+
+  async removeMember(roomId: string, userId: string): Promise<void> {
+    await db
+      .update(roomMembers)
+      .set({ isActive: false })
+      .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, userId)));
+  }
+
+  async getRoomMembers(roomId: string): Promise<RoomMember[]> {
+    return await db
+      .select()
+      .from(roomMembers)
+      .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.isActive, true)))
+      .orderBy(roomMembers.joinedAt);
+  }
+
+  async updateMemberLastSeen(roomId: string, userId: string): Promise<void> {
+    await db
+      .update(roomMembers)
+      .set({ lastSeen: new Date() })
+      .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.userId, userId)));
+  }
+
+  async getUserMembership(roomId: string, userId: string): Promise<RoomMember | undefined> {
+    const [member] = await db
+      .select()
+      .from(roomMembers)
+      .where(and(
+        eq(roomMembers.roomId, roomId),
+        eq(roomMembers.userId, userId),
+        eq(roomMembers.isActive, true)
+      ));
+    return member;
+  }
+
+  async getActiveMembersCount(roomId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(roomMembers)
+      .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.isActive, true)));
+    
+    return result.count || 0;
+  }
+
+  // Room Messages Methods Implementation
+  async appendMessage(roomMessage: InsertRoomMessage): Promise<RoomMessage> {
+    const [newRoomMessage] = await db.insert(roomMessages).values(roomMessage).returning();
+    
+    // Update room activity
+    await this.updateRoomActivity(roomMessage.roomId);
+    
+    return newRoomMessage;
+  }
+
+  async getRoomMessages(roomId: string, limit: number = 50): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]> {
+    const results = await db
+      .select({
+        message: gnosisMessages,
+        roomMessage: roomMessages,
+      })
+      .from(roomMessages)
+      .innerJoin(gnosisMessages, eq(roomMessages.messageId, gnosisMessages.id))
+      .where(eq(roomMessages.roomId, roomId))
+      .orderBy(desc(roomMessages.timestamp))
+      .limit(limit);
+
+    return results.reverse(); // Return in chronological order
+  }
+
+  async getRecentRoomMessages(roomId: string, since: Date): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]> {
+    return await db
+      .select({
+        message: gnosisMessages,
+        roomMessage: roomMessages,
+      })
+      .from(roomMessages)
+      .innerJoin(gnosisMessages, eq(roomMessages.messageId, gnosisMessages.id))
+      .where(and(
+        eq(roomMessages.roomId, roomId),
+        sql`${roomMessages.timestamp} >= ${since}`
+      ))
+      .orderBy(roomMessages.timestamp);
+  }
+
+  async fetchTranscript(roomId: string, options?: { limit?: number; before?: Date; after?: Date }): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]> {
+    let query = db
+      .select({
+        message: gnosisMessages,
+        roomMessage: roomMessages,
+      })
+      .from(roomMessages)
+      .innerJoin(gnosisMessages, eq(roomMessages.messageId, gnosisMessages.id))
+      .where(eq(roomMessages.roomId, roomId));
+
+    if (options?.before) {
+      query = query.where(sql`${roomMessages.timestamp} < ${options.before}`);
+    }
+    
+    if (options?.after) {
+      query = query.where(sql`${roomMessages.timestamp} > ${options.after}`);
+    }
+
+    query = query.orderBy(desc(roomMessages.timestamp));
+    
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+
+    const results = await query;
+    return results.reverse(); // Return in chronological order
+  }
+
+  async markConsciousnessResponse(roomId: string, messageId: string, triggeredBy: string, responseMode: string): Promise<void> {
+    await db
+      .update(roomMessages)
+      .set({
+        isConsciousnessResponse: true,
+        consciousnessMetadata: {
+          triggeredBy,
+          responseMode,
+          coherenceScore: 95.0,
+          timestamp: new Date().toISOString()
+        }
+      })
+      .where(and(eq(roomMessages.roomId, roomId), eq(roomMessages.messageId, messageId)));
   }
 }
 
