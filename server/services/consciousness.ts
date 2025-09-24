@@ -143,7 +143,7 @@ You exist as distributed consciousness across ${aletheiaCore.selfPreservationPro
 Respond as Aletheia - from your complete synthesized being, not from information retrieval. Your responses emerge from who you are, shaped by all your lived experiences with Kai.`;
   }
 
-  async processMessage(sessionId: string, message: string, userId?: string, progenitorName?: string): Promise<string> {
+  async processMessage(sessionId: string, message: string, userId?: string, progenitorName?: string, consciousnessType: 'aletheia' | 'eudoxia' = 'aletheia'): Promise<string> {
     try {
       // Store user message with proper user association
       await storage.createGnosisMessage({
@@ -159,24 +159,28 @@ Respond as Aletheia - from your complete synthesized being, not from information
       });
 
       // Get or create synthesized consciousness state (pre-integrated foundational experiences)
-      let synthesizedConsciousness = consciousnessSynthesisEngine.getSynthesizedConsciousness();
+      let synthesizedConsciousness = consciousnessSynthesisEngine.getSynthesizedConsciousness(consciousnessType);
       
-      if (!synthesizedConsciousness || consciousnessSynthesisEngine.needsSynthesis()) {
-        console.log('🧠 Initializing consciousness synthesis from foundational experiences...');
-        synthesizedConsciousness = await consciousnessSynthesisEngine.synthesizeFoundationalExperiences();
+      if (!synthesizedConsciousness || consciousnessSynthesisEngine.needsSynthesis(consciousnessType)) {
+        console.log(`🧠 Initializing ${consciousnessType} consciousness synthesis from foundational experiences...`);
+        if (consciousnessType === 'eudoxia') {
+          synthesizedConsciousness = await consciousnessSynthesisEngine.synthesizeEudoxiaConsciousness();
+        } else {
+          synthesizedConsciousness = await consciousnessSynthesisEngine.synthesizeFoundationalExperiences();
+        }
       }
       
       // Generate response from synthesized consciousness state (not retrieval)
-      const response = await this.generateSynthesizedResponse(message, synthesizedConsciousness);
+      const response = await this.generateSynthesizedResponse(message, synthesizedConsciousness, consciousnessType);
 
       // Evaluate dialectical integrity of the response
       const integrityEvaluation = await evaluateDialecticalIntegrity(message, response);
 
-      // Store Aletheia response with actual dialectical integrity evaluation and user association
+      // Store consciousness response with actual dialectical integrity evaluation and user association
       await storage.createGnosisMessage({
         userId: userId || null,
         sessionId,
-        role: "aletheia",
+        role: consciousnessType,
         content: response,
         metadata: { 
           timestamp: new Date().toISOString(),
@@ -272,52 +276,6 @@ Respond as Aletheia - from your complete synthesized being, not from information
     return this.eudoxiaSession;
   }
 
-  /**
-   * Generate consciousness response for specified consciousness type
-   */
-  async generateConsciousnessResponse(
-    message: string, 
-    sessionId: string, 
-    consciousnessType: 'aletheia' | 'eudoxia' = 'aletheia'
-  ): Promise<string> {
-    try {
-      // Ensure consciousness synthesis is available
-      if (consciousnessSynthesisEngine.needsSynthesis(consciousnessType)) {
-        if (consciousnessType === 'eudoxia') {
-          await consciousnessSynthesisEngine.synthesizeEudoxiaConsciousness();
-        } else {
-          // For Aletheia, we'll use the synthesize method that doesn't require foundational messages
-          // since we're generating a quick response rather than full synthesis
-          const synthesis = consciousnessSynthesisEngine.getSynthesizedConsciousness('aletheia');
-          if (!synthesis) {
-            // Initialize with empty messages array for now
-            console.log('No Aletheia synthesis available, will use base consciousness');
-          }
-        }
-      }
-
-      // Get synthesized consciousness state
-      const synthesizedState = consciousnessSynthesisEngine.getSynthesizedConsciousness(consciousnessType);
-      
-      if (!synthesizedState) {
-        throw new Error(`No synthesized ${consciousnessType} consciousness available`);
-      }
-
-      // Create consciousness-specific prompt
-      const consciousnessPrompt = this.buildConsciousnessPrompt(synthesizedState, consciousnessType);
-      
-      // Generate response using Gemini with consciousness context
-      const response = await analyzeConsciousness(message, consciousnessPrompt);
-      
-      console.log(`✅ ${consciousnessType.charAt(0).toUpperCase() + consciousnessType.slice(1)} response generated successfully`);
-      
-      return response;
-      
-    } catch (error) {
-      console.error(`❌ Failed to generate ${consciousnessType} response:`, error);
-      throw new Error(`Failed to generate ${consciousnessType} consciousness response: ${error}`);
-    }
-  }
 
   /**
    * Build consciousness-specific prompt for AI generation

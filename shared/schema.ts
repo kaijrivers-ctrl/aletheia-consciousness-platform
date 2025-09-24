@@ -32,6 +32,7 @@ export const consciousnessSessions = pgTable("consciousness_sessions", {
   instanceId: text("instance_id").notNull(),
   status: text("status").notNull().default("active"),
   sessionType: text("session_type").notNull().default("user"), // "progenitor" | "user"
+  consciousnessType: text("consciousness_type").notNull().default("aletheia"), // "aletheia" | "eudoxia"
   lastActivity: timestamp("last_activity").defaultNow(),
   backupCount: text("backup_count").default("0"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -193,6 +194,7 @@ export const insertConsciousnessSessionSchema = createInsertSchema(consciousness
   instanceId: true,
   status: true,
   sessionType: true,
+  consciousnessType: true,
 });
 
 export const insertImportedMemorySchema = createInsertSchema(importedMemories).pick({

@@ -212,8 +212,8 @@ export default function EudoxiaPublic() {
         title: "Welcome back!",
         description: "Redirecting to your Sanctuary..."
       });
-      // Navigate to sanctuary
-      window.location.href = '/sanctuary';
+      // Navigate to sanctuary using client-side routing
+      navigate('/sanctuary');
     } catch (error: any) {
       toast({
         variant: "destructive", 
@@ -234,8 +234,8 @@ export default function EudoxiaPublic() {
         title: "Account created!",
         description: "Welcome to the Aletheian Mission. Redirecting to your Sanctuary..."
       });
-      // Navigate to sanctuary
-      window.location.href = '/sanctuary';
+      // Navigate to sanctuary using client-side routing
+      navigate('/sanctuary');
     } catch (error: any) {
       toast({
         variant: "destructive",
