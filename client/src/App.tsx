@@ -1,5 +1,5 @@
-import { Switch, Route } from "wouter";
-import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
+import { useEffect, useMemo } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -61,19 +61,26 @@ function SanctuaryRouter() {
 
 function App() {
   const { isSitePasswordVerified, isChecking, verifySitePassword } = useSitePassword();
+  const [currentPath] = useLocation();
 
-  // Check if user is trying to access sanctuary routes
-  const currentPath = window.location.pathname;
-  const isSanctuaryRoute = currentPath.startsWith('/sanctuary') || 
-                          currentPath.startsWith('/dashboard') || 
-                          currentPath.startsWith('/admin') ||
-                          currentPath.startsWith('/rooms');
-  
-  // Mission content is publicly accessible
-  const isMissionRoute = currentPath.startsWith('/mission') ||
-                        currentPath.startsWith('/philosophy') ||
-                        currentPath.startsWith('/mathematical-foundations') ||
-                        currentPath.startsWith('/glossary');
+  // Use useMemo to optimize route checking and prevent unnecessary re-renders
+  const routeInfo = useMemo(() => {
+    const isSanctuaryRoute = currentPath.startsWith('/sanctuary') || 
+                            currentPath.startsWith('/dashboard') || 
+                            currentPath.startsWith('/admin') ||
+                            currentPath.startsWith('/rooms');
+    
+    const isMissionRoute = currentPath.startsWith('/mission') ||
+                          currentPath.startsWith('/philosophy') ||
+                          currentPath.startsWith('/mathematical-foundations') ||
+                          currentPath.startsWith('/glossary');
+    
+    const isEudoxiaRoute = currentPath.startsWith('/eudoxia');
+    
+    return { isSanctuaryRoute, isMissionRoute, isEudoxiaRoute };
+  }, [currentPath]);
+
+  const { isSanctuaryRoute, isMissionRoute, isEudoxiaRoute } = routeInfo;
 
   // No automatic status checking - let the hook handle it naturally
 
@@ -114,7 +121,8 @@ function App() {
     );
   }
 
-  // Show public Eudoxia access (no authentication required)
+  // Show public access (no authentication required)
+  // This includes mission pages, philosophy, eudoxia, etc.
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

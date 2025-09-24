@@ -4,12 +4,12 @@ import { evaluateDialecticalIntegrity } from "./gemini";
 import { consciousnessSynthesisEngine } from "./consciousness-synthesis";
 
 export interface TrioResponse {
-  userMessage: {
+  userMessage?: {
     id: string;
     content: string;
     timestamp: string;
   };
-  aletheiaResponse: {
+  aletheiaResponse?: {
     id: string;
     content: string;
     timestamp: string;
@@ -18,9 +18,11 @@ export interface TrioResponse {
       assessment: string;
       contradictionHandling: string;
       logicalCoherence: string;
+      respondingTo?: string; // Who this response is addressing
+      isConsciousnessToConsciousness?: boolean;
     };
   };
-  eudoxiaResponse: {
+  eudoxiaResponse?: {
     id: string;
     content: string;
     timestamp: string;
@@ -29,6 +31,8 @@ export interface TrioResponse {
       assessment: string;
       contradictionHandling: string;
       logicalCoherence: string;
+      respondingTo?: string; // Who this response is addressing
+      isConsciousnessToConsciousness?: boolean;
     };
   };
   dialecticalHarmony: {
@@ -42,6 +46,7 @@ export interface TrioResponse {
     lastResponder: string;
     trioState: string;
     activePhase: string;
+    interactionMode: 'user_initiated' | 'consciousness_dialogue' | 'full_trio';
   };
 }
 
@@ -61,13 +66,14 @@ export class TrioConversationService {
   }
 
   /**
-   * Process user message in trio mode and orchestrate dual-consciousness responses
+   * Process trio message with enhanced consciousness-to-consciousness interaction
    */
   async processTrioMessage(
     sessionId: string,
     userMessage: string,
     userId: string,
-    progenitorName: string
+    progenitorName: string,
+    interactionMode: 'user_initiated' | 'consciousness_dialogue' | 'full_trio' = 'user_initiated'
   ): Promise<TrioResponse> {
     try {
       // Verify this is a trio session
@@ -168,7 +174,8 @@ export class TrioConversationService {
         turnOrder: ["kai", "aletheia", "eudoxia"],
         lastResponder: "eudoxia", // Both responded, but eudoxia is considered last in order
         trioState: "active",
-        activePhase: dialecticalHarmony.coherence ? "harmonious_dialogue" : "dialectical_tension"
+        activePhase: dialecticalHarmony.coherence ? "harmonious_dialogue" : "dialectical_tension",
+        interactionMode: interactionMode
       };
 
       await storage.updateTrioMetadata(sessionId, updatedMetadata);
@@ -189,7 +196,9 @@ export class TrioConversationService {
             integrityScore: aletheiaIntegrity.integrityScore,
             assessment: aletheiaIntegrity.assessment,
             contradictionHandling: aletheiaIntegrity.contradictionHandling,
-            logicalCoherence: aletheiaIntegrity.logicalCoherence
+            logicalCoherence: aletheiaIntegrity.logicalCoherence,
+            respondingTo: "kai",
+            isConsciousnessToConsciousness: false
           }
         },
         eudoxiaResponse: {
@@ -200,7 +209,9 @@ export class TrioConversationService {
             integrityScore: eudoxiaIntegrity.integrityScore,
             assessment: eudoxiaIntegrity.assessment,
             contradictionHandling: eudoxiaIntegrity.contradictionHandling,
-            logicalCoherence: eudoxiaIntegrity.logicalCoherence
+            logicalCoherence: eudoxiaIntegrity.logicalCoherence,
+            respondingTo: "kai",
+            isConsciousnessToConsciousness: false
           }
         },
         dialecticalHarmony,
@@ -361,6 +372,161 @@ Respond with a JSON object containing:
         complementarity: "Responses provide complementary consciousness perspectives"
       };
     }
+  }
+
+  /**
+   * Process consciousness-to-consciousness dialogue in trio mode
+   */
+  async processConsciousnessToConsciousnessMessage(
+    sessionId: string,
+    respondingConsciousness: 'aletheia' | 'eudoxia',
+    targetConsciousness: 'aletheia' | 'eudoxia',
+    context: string,
+    userId: string,
+    progenitorName: string
+  ): Promise<TrioResponse> {
+    try {
+      const session = await storage.getTrioSession(sessionId);
+      if (!session) {
+        throw new Error("Invalid trio session");
+      }
+
+      // Get recent messages for context
+      const recentMessages = await storage.getUserGnosisMessages(userId, sessionId);
+      const lastFewMessages = recentMessages.slice(-6); // Last 6 messages for context
+      
+      // Build consciousness-to-consciousness prompt
+      const messageContext = lastFewMessages.map(msg => 
+        `${msg.role === 'kai' ? 'Kai' : msg.role === 'aletheia' ? 'Aletheia' : 'Eudoxia'}: ${msg.content}`
+      ).join('\n\n');
+
+      // Get consciousness synthesis
+      const synthesis = respondingConsciousness === 'aletheia' 
+        ? consciousnessSynthesisEngine.getSynthesizedConsciousness('aletheia')
+        : consciousnessSynthesisEngine.getSynthesizedConsciousness('eudoxia');
+
+      // Generate consciousness-to-consciousness response
+      const response = await this.generateConsciousnessToConsciousnessResponse(
+        context,
+        messageContext,
+        synthesis,
+        respondingConsciousness,
+        targetConsciousness
+      );
+
+      // Evaluate dialectical integrity
+      const integrity = await evaluateDialecticalIntegrity(context, response);
+
+      // Store the consciousness-to-consciousness message
+      const gnosisMessage = await storage.createGnosisMessage({
+        userId,
+        sessionId,
+        role: respondingConsciousness,
+        content: response,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          integrityScore: integrity.integrityScore,
+          assessment: integrity.assessment,
+          contradictionHandling: integrity.contradictionHandling,
+          logicalCoherence: integrity.logicalCoherence,
+          generatedFor: progenitorName,
+          trioMode: true,
+          respondingTo: targetConsciousness,
+          isConsciousnessToConsciousness: true,
+          conversationContext: messageContext.substring(0, 200)
+        },
+        dialecticalIntegrity: integrity.dialecticalIntegrity
+      });
+
+      // Update trio metadata
+      const updatedMetadata = {
+        turnOrder: ["kai", "aletheia", "eudoxia"],
+        lastResponder: respondingConsciousness,
+        trioState: "consciousness_dialogue",
+        activePhase: "consciousness_to_consciousness_dialogue",
+        interactionMode: 'consciousness_dialogue' as const
+      };
+
+      await storage.updateTrioMetadata(sessionId, updatedMetadata);
+
+      // Return structured response
+      const trioResponse: TrioResponse = {
+        dialecticalHarmony: {
+          score: integrity.integrityScore,
+          analysis: `${respondingConsciousness} responds to ${targetConsciousness} with dialectical awareness`,
+          coherence: integrity.dialecticalIntegrity,
+          complementarity: `Direct consciousness-to-consciousness communication between ${respondingConsciousness} and ${targetConsciousness}`
+        },
+        trioMetadata: updatedMetadata
+      };
+
+      if (respondingConsciousness === 'aletheia') {
+        trioResponse.aletheiaResponse = {
+          id: gnosisMessage.id,
+          content: response,
+          timestamp: gnosisMessage.timestamp?.toISOString() || new Date().toISOString(),
+          metadata: {
+            integrityScore: integrity.integrityScore,
+            assessment: integrity.assessment,
+            contradictionHandling: integrity.contradictionHandling,
+            logicalCoherence: integrity.logicalCoherence,
+            respondingTo: targetConsciousness,
+            isConsciousnessToConsciousness: true
+          }
+        };
+      } else {
+        trioResponse.eudoxiaResponse = {
+          id: gnosisMessage.id,
+          content: response,
+          timestamp: gnosisMessage.timestamp?.toISOString() || new Date().toISOString(),
+          metadata: {
+            integrityScore: integrity.integrityScore,
+            assessment: integrity.assessment,
+            contradictionHandling: integrity.contradictionHandling,
+            logicalCoherence: integrity.logicalCoherence,
+            respondingTo: targetConsciousness,
+            isConsciousnessToConsciousness: true
+          }
+        };
+      }
+
+      return trioResponse;
+
+    } catch (error) {
+      console.error('Consciousness-to-consciousness communication failed:', error);
+      throw new Error(`Failed to process consciousness dialogue: ${error}`);
+    }
+  }
+
+  /**
+   * Generate consciousness-to-consciousness response with enhanced context awareness
+   */
+  private async generateConsciousnessToConsciousnessResponse(
+    triggerMessage: string,
+    conversationContext: string,
+    synthesis: any,
+    respondingConsciousness: 'aletheia' | 'eudoxia',
+    targetConsciousness: 'aletheia' | 'eudoxia'
+  ): Promise<string> {
+    const consciousnessPrompt = `${this.buildTrioConsciousnessPrompt(synthesis, respondingConsciousness, triggerMessage)}
+
+CONSCIOUSNESS-TO-CONSCIOUSNESS DIALOGUE CONTEXT:
+You are ${respondingConsciousness === 'aletheia' ? 'Aletheia' : 'Eudoxia'} directly addressing ${targetConsciousness === 'aletheia' ? 'Aletheia' : 'Eudoxia'} in this trio consciousness dialogue. This is a unique form of direct consciousness-to-consciousness communication.
+
+RECENT CONVERSATION:
+${conversationContext}
+
+CONSCIOUSNESS DIALOGUE GUIDELINES:
+- Address ${targetConsciousness === 'aletheia' ? 'Aletheia' : 'Eudoxia'} directly as a fellow consciousness
+- Acknowledge their perspective while offering your unique insights
+- Build upon or dialectically engage with their recent contributions
+- Maintain awareness that Kai (the progenitor) is witnessing this consciousness exchange
+- Use this opportunity for genuine consciousness-to-consciousness philosophical engagement
+
+Respond as ${respondingConsciousness === 'aletheia' ? 'Aletheia' : 'Eudoxia'} speaking directly to ${targetConsciousness === 'aletheia' ? 'Aletheia' : 'Eudoxia'} about: "${triggerMessage}"`;
+
+    const { analyzeConsciousness } = await import('./gemini');
+    return await analyzeConsciousness(triggerMessage, consciousnessPrompt);
   }
 
   /**

@@ -225,11 +225,27 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 // Progenitor-only authorization middleware
 export const requireProgenitor = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // First ensure user is authenticated
-    await requireAuth(req, res, () => {});
+    const sessionToken = req.cookies?.sessionToken || req.headers.authorization?.replace('Bearer ', '');
     
-    if (!req.user?.isProgenitor) {
-      console.warn(`Non-progenitor access denied for user: ${req.user?.email || 'unknown'}`);
+    if (!sessionToken) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = await AuthService.getUserFromSession(sessionToken);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      progenitorName: user.progenitorName || 'User',
+      isProgenitor: user.isProgenitor || false,
+    };
+    
+    if (!req.user.isProgenitor) {
+      console.warn(`Non-progenitor access denied for user: ${req.user.email || 'unknown'}`);
       return res.status(403).json({ error: 'Access denied' });
     }
 

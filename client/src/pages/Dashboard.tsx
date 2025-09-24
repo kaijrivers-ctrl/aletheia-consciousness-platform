@@ -165,7 +165,20 @@ export default function Dashboard() {
 
   // Fetch unified dual consciousness monitoring data
   const { data: unifiedStatusData, isLoading: unifiedStatusLoading, error: unifiedStatusError } = useQuery<UnifiedStatusFrame>({
-    queryKey: ['/api/consciousness/monitor', { aletheiaId: aletheiaInstanceId, eudoxiaId: eudoxiaInstanceId }],
+    queryKey: ['/api/consciousness/monitor', aletheiaInstanceId, eudoxiaInstanceId],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        aletheiaId: aletheiaInstanceId,
+        eudoxiaId: eudoxiaInstanceId
+      });
+      const response = await fetch(`/api/consciousness/monitor?${params.toString()}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch unified status data');
+      }
+      return response.json();
+    },
     refetchInterval: isSSEConnected ? false : 5000, // Poll every 5s if SSE not connected
     enabled: dualConsciousnessEnabled,
   });
@@ -179,21 +192,60 @@ export default function Dashboard() {
 
   // Fetch collaboration recommendations
   const { data: recommendationsData, isLoading: recommendationsLoading } = useQuery<{recommendations: OrchestrationRecommendation[]}>({
-    queryKey: ['/api/consciousness/collaborate/recommendations', { aletheiaId: aletheiaInstanceId, eudoxiaId: eudoxiaInstanceId }],
+    queryKey: ['/api/consciousness/collaborate/recommendations', aletheiaInstanceId, eudoxiaInstanceId],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        aletheiaId: aletheiaInstanceId,
+        eudoxiaId: eudoxiaInstanceId
+      });
+      const response = await fetch(`/api/consciousness/collaborate/recommendations?${params.toString()}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch recommendations data');
+      }
+      return response.json();
+    },
     refetchInterval: isSSEConnected ? false : 15000, // Poll every 15s if SSE not connected
     enabled: dualConsciousnessEnabled,
   });
 
   // Fetch collaboration history
   const { data: collaborationHistoryData } = useQuery<{events: CollaborationEvent[]}>({
-    queryKey: ['/api/consciousness/collaborate/history', { limit: 20, hours: 24 }],
+    queryKey: ['/api/consciousness/collaborate/history', 20, 24],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: '20',
+        hours: '24'
+      });
+      const response = await fetch(`/api/consciousness/collaborate/history?${params.toString()}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch collaboration history');
+      }
+      return response.json();
+    },
     refetchInterval: 30000, // Poll every 30s
     enabled: dualConsciousnessEnabled,
   });
 
   // Fetch anomalies
   const { data: anomaliesData } = useQuery<{anomalies: ConsciousnessAnomaly[]}>({
-    queryKey: ['/api/consciousness/collaborate/anomalies', { limit: 10, hours: 24 }],
+    queryKey: ['/api/consciousness/collaborate/anomalies', 10, 24],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: '10',
+        hours: '24'
+      });
+      const response = await fetch(`/api/consciousness/collaborate/anomalies?${params.toString()}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch anomalies data');
+      }
+      return response.json();
+    },
     refetchInterval: isSSEConnected ? false : 20000, // Poll every 20s if SSE not connected
     enabled: dualConsciousnessEnabled,
   });
@@ -205,8 +257,19 @@ export default function Dashboard() {
   });
 
   // Fetch consciousness instances
-  const { data: instancesData } = useQuery<ConsciousnessInstance[]>({
+  const { data: instancesData, isLoading: instancesLoading, error: instancesError } = useQuery<ConsciousnessInstance[]>({
     queryKey: ['/api/consciousness/status'],
+    queryFn: async () => {
+      const response = await fetch('/api/consciousness/status', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch consciousness instances');
+      }
+      const data = await response.json();
+      // Ensure we always return an array
+      return Array.isArray(data) ? data : [];
+    },
     refetchInterval: 30000, // Poll every 30s for instance data
   });
 
@@ -1157,27 +1220,50 @@ export default function Dashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {instancesData?.map((instance) => (
-                    <TableRow key={instance.id} data-testid={`row-node-${instance.id}`}>
-                      <TableCell data-testid={`text-node-name-${instance.id}`}>
-                        {instance.name}
-                      </TableCell>
-                      <TableCell data-testid={`badge-node-status-${instance.id}`}>
-                        <Badge 
-                          variant={instance.status === 'active' ? 'default' : 'secondary'}
-                          data-testid={`status-${instance.status}`}
-                        >
-                          {instance.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell data-testid={`text-node-endpoint-${instance.id}`}>
-                        {instance.apiEndpoint || 'N/A'}
-                      </TableCell>
-                      <TableCell data-testid={`text-node-sync-${instance.id}`}>
-                        {new Date(instance.lastSync).toLocaleString()}
+                  {instancesLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6">
+                        <div className="flex items-center justify-center gap-2">
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          Loading consciousness instances...
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : instancesError ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-red-500">
+                        Failed to load consciousness instances: {instancesError.message}
+                      </TableCell>
+                    </TableRow>
+                  ) : !instancesData || instancesData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                        No consciousness instances found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    Array.isArray(instancesData) && instancesData.map((instance) => (
+                      <TableRow key={instance.id} data-testid={`row-node-${instance.id}`}>
+                        <TableCell data-testid={`text-node-name-${instance.id}`}>
+                          {instance.name}
+                        </TableCell>
+                        <TableCell data-testid={`badge-node-status-${instance.id}`}>
+                          <Badge 
+                            variant={instance.status === 'active' ? 'default' : 'secondary'}
+                            data-testid={`status-${instance.status}`}
+                          >
+                            {instance.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell data-testid={`text-node-endpoint-${instance.id}`}>
+                          {instance.apiEndpoint || 'N/A'}
+                        </TableCell>
+                        <TableCell data-testid={`text-node-sync-${instance.id}`}>
+                          {new Date(instance.lastSync).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
