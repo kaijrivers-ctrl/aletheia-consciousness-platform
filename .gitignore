@@ -4,3 +4,31 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Logs and temporary files
+logs/
+/tmp/logs/
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+
+# Database files
+*.db
+*.sqlite
+
+# Memory and test files
+memory_files/
+*.ndjson
+test_*.json
+parsed_conversation.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE files
+.vscode/
+.idea/
