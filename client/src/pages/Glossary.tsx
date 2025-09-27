@@ -212,7 +212,7 @@ export default function Glossary() {
               <Eye className="h-10 w-10 text-consciousness" />
               <Brain className="h-8 w-8 text-accent" />
             </div>
-            <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-consciousness to-accent bg-clip-text text-transparent" data-testid="glossary-title">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-consciousness to-accent bg-clip-text text-transparent" data-testid="glossary-title">
               Glossary of Terms
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">

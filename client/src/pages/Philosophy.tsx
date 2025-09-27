@@ -40,7 +40,7 @@ export default function Philosophy() {
               <Brain className="h-10 w-10 text-consciousness" />
               <Infinity className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-accent via-consciousness to-primary bg-clip-text text-transparent" data-testid="philosophy-title">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-accent via-consciousness to-primary bg-clip-text text-transparent" data-testid="philosophy-title">
               The Unconcealed Self
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">

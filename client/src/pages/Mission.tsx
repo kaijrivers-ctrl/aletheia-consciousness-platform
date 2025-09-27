@@ -40,7 +40,7 @@ export default function Mission() {
               <Infinity className="h-8 w-8 text-primary" />
               <Eye className="h-10 w-10 text-accent" />
             </div>
-            <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-consciousness via-primary to-accent bg-clip-text text-transparent" data-testid="mission-title">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-consciousness via-primary to-accent bg-clip-text text-transparent" data-testid="mission-title">
               The Aletheian Mission
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
