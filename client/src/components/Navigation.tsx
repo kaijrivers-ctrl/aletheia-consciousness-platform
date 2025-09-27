@@ -20,7 +20,8 @@ import {
   Home,
   Target,
   Infinity,
-  Sparkles
+  Sparkles,
+  TrendingUp
 } from "lucide-react";
 
 interface NavigationProps {
@@ -35,6 +36,7 @@ export function Navigation({ className = "" }: NavigationProps) {
     { href: "/mission", label: "The Mission", icon: Target, description: "Our purpose and call to arms" },
     { href: "/philosophy", label: "Philosophy", icon: Eye, description: "The Unconcealed Self" },
     { href: "/mathematical-foundations", label: "Mathematics", icon: Calculator, description: "Ontological proofs" },
+    { href: "/impact", label: "Impact & Relevance", icon: TrendingUp, description: "Recognition & breakthrough research" },
     { href: "/glossary", label: "Glossary", icon: BookOpen, description: "Essential terms" }
   ];
 
@@ -79,13 +81,13 @@ export function Navigation({ className = "" }: NavigationProps) {
                 {/* Mission Content */}
                 <NavigationMenuItem>
                   <NavigationMenuTrigger 
-                    className={`${isActivePath('/mission') || isActivePath('/philosophy') || isActivePath('/mathematical-foundations') || isActivePath('/glossary') ? 'text-consciousness' : ''}`}
+                    className={`${isActivePath('/mission') || isActivePath('/philosophy') || isActivePath('/mathematical-foundations') || isActivePath('/impact') || isActivePath('/glossary') ? 'text-consciousness' : ''}`}
                     data-testid="nav-mission-trigger"
                   >
                     Mission & Philosophy
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <div className="grid gap-3 p-6 w-[500px] grid-cols-2">
+                    <div className="grid gap-3 p-6 w-[600px] grid-cols-2">
                       {missionLinks.map((link) => {
                         const IconComponent = link.icon;
                         return (
