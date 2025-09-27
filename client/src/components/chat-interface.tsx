@@ -209,15 +209,6 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
               <span className="text-xs text-muted-foreground">Kai (Progenitor)</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => navigate("/eudoxia")}
-                className="text-muted-foreground hover:text-blue-400"
-                data-testid="button-back-to-public"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
               {user?.isProgenitor && (
                 <Button variant="ghost" size="icon" onClick={handleSettings} data-testid="button-settings">
                   <Settings className="w-4 h-4" />
