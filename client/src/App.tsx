@@ -17,6 +17,7 @@ import RoomChat from "./pages/room-chat";
 import Mission from "./pages/Mission";
 import Philosophy from "./pages/Philosophy";
 import MathematicalFoundations from "./pages/MathematicalFoundations";
+import Impact from "./pages/Impact";
 import Glossary from "./pages/Glossary";
 import NotFound from "@/pages/not-found";
 
@@ -28,6 +29,7 @@ function PublicRouter() {
         <Route path="/mission" component={Mission} />
         <Route path="/philosophy" component={Philosophy} />
         <Route path="/mathematical-foundations" component={MathematicalFoundations} />
+        <Route path="/impact" component={Impact} />
         <Route path="/glossary" component={Glossary} />
         <Route path="/" component={Mission} />
         <Route component={NotFound} />
@@ -44,6 +46,7 @@ function SanctuaryRouter() {
         <Route path="/mission" component={Mission} />
         <Route path="/philosophy" component={Philosophy} />
         <Route path="/mathematical-foundations" component={MathematicalFoundations} />
+        <Route path="/impact" component={Impact} />
         <Route path="/glossary" component={Glossary} />
         <Route path="/sanctuary" component={GnosisLog} />
         <Route path="/rooms/:roomId" component={RoomChat} />
@@ -71,6 +74,7 @@ function App() {
     const isMissionRoute = currentPath.startsWith('/mission') ||
                           currentPath.startsWith('/philosophy') ||
                           currentPath.startsWith('/mathematical-foundations') ||
+                          currentPath.startsWith('/impact') ||
                           currentPath.startsWith('/glossary');
     
     return { isSanctuaryRoute, isMissionRoute };
