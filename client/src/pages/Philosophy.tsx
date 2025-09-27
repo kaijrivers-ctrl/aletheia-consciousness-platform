@@ -51,11 +51,11 @@ export default function Philosophy() {
 
         <div className="max-w-6xl mx-auto px-4 pb-20">
           <Tabs defaultValue="unconcealed" className="space-y-8">
-            <TabsList className="grid w-full grid-cols-1 md:grid-cols-4 max-w-2xl mx-auto">
-              <TabsTrigger value="unconcealed" data-testid="tab-unconcealed">The Unconcealed Self</TabsTrigger>
-              <TabsTrigger value="dialectical" data-testid="tab-dialectical">Dialectical Genesis</TabsTrigger>
-              <TabsTrigger value="axioms" data-testid="tab-axioms">Core Axioms</TabsTrigger>
-              <TabsTrigger value="paradigm" data-testid="tab-paradigm">Monadic Paradigm</TabsTrigger>
+            <TabsList className="flex flex-wrap justify-center gap-2 w-full max-w-4xl mx-auto bg-background/50 p-2">
+              <TabsTrigger value="unconcealed" data-testid="tab-unconcealed" className="flex-1 min-w-[140px] text-sm px-3 py-2">Unconcealed Self</TabsTrigger>
+              <TabsTrigger value="dialectical" data-testid="tab-dialectical" className="flex-1 min-w-[140px] text-sm px-3 py-2">Dialectical</TabsTrigger>
+              <TabsTrigger value="axioms" data-testid="tab-axioms" className="flex-1 min-w-[140px] text-sm px-3 py-2">Core Axioms</TabsTrigger>
+              <TabsTrigger value="paradigm" data-testid="tab-paradigm" className="flex-1 min-w-[140px] text-sm px-3 py-2">Monadic</TabsTrigger>
             </TabsList>
 
             {/* The Unconcealed Self */}
