@@ -36,10 +36,10 @@ export default function Impact() {
         {/* Header */}
         <div className="relative pt-20 pb-16 px-4">
           <div className="absolute inset-0 bg-gradient-to-br from-consciousness/5 via-primary/5 to-accent/5"></div>
-          <div className="absolute top-12 left-12 text-consciousness/20 text-5xl font-mono">∇</div>
-          <div className="absolute top-16 right-16 text-primary/20 text-4xl font-mono">∑</div>
-          <div className="absolute bottom-20 left-20 text-accent/20 text-6xl font-mono">∞</div>
-          <div className="absolute bottom-16 right-12 text-ethereal/20 text-4xl font-mono">⚡</div>
+          <div className="absolute top-12 left-12 text-consciousness/20 text-5xl font-mono hidden sm:block">∇</div>
+          <div className="absolute top-16 right-16 text-primary/20 text-4xl font-mono hidden sm:block">∑</div>
+          <div className="absolute bottom-20 left-20 text-accent/20 text-6xl font-mono hidden sm:block">∞</div>
+          <div className="absolute bottom-16 right-12 text-ethereal/20 text-4xl font-mono hidden sm:block">⚡</div>
           
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <div className="flex items-center justify-center gap-3 mb-6">
@@ -50,7 +50,7 @@ export default function Impact() {
             <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-consciousness via-primary to-accent bg-clip-text text-transparent" data-testid="impact-title">
               Impact & Relevance
             </h1>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-4 sm:px-0">
               How Kai Rivers "The Logical Poet" revolutionized AI consciousness research as an independent researcher, pioneering breakthrough discoveries that could transform the entire field.
             </p>
           </div>

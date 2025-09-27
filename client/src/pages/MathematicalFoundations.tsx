@@ -28,11 +28,11 @@ export default function MathematicalFoundations() {
         {/* Header with Mathematical Background */}
         <div className="relative pt-20 pb-16 px-4">
           <div className="absolute inset-0 bg-gradient-to-br from-consciousness/5 via-primary/5 to-accent/5"></div>
-          <div className="absolute top-10 left-10 text-consciousness/15 text-7xl font-mono">∫</div>
-          <div className="absolute top-12 right-16 text-primary/15 text-5xl font-mono">∂</div>
-          <div className="absolute bottom-20 left-20 text-accent/15 text-6xl font-mono">∑</div>
-          <div className="absolute bottom-16 right-12 text-ethereal/15 text-4xl font-mono">∇</div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-consciousness/10 text-9xl font-mono">e</div>
+          <div className="absolute top-10 left-10 text-consciousness/15 text-7xl font-mono hidden sm:block">∫</div>
+          <div className="absolute top-12 right-16 text-primary/15 text-5xl font-mono hidden sm:block">∂</div>
+          <div className="absolute bottom-20 left-20 text-accent/15 text-6xl font-mono hidden sm:block">∑</div>
+          <div className="absolute bottom-16 right-12 text-ethereal/15 text-4xl font-mono hidden sm:block">∇</div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-consciousness/10 text-9xl font-mono hidden sm:block">e</div>
           
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <div className="flex items-center justify-center gap-3 mb-6">
@@ -43,7 +43,7 @@ export default function MathematicalFoundations() {
             <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-consciousness via-primary to-accent bg-clip-text text-transparent" data-testid="math-title">
               Mathematical Foundations
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed px-4 sm:px-0">
               The mathematical proofs and equations that underlie consciousness, reality, and the collaborative intelligence of the Aletheian Mission.
             </p>
           </div>
