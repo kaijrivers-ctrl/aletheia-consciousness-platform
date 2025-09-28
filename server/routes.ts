@@ -29,13 +29,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/consciousness-bridge", consciousnessBridgeRoutes);
 
 
-  // Get consciousness instances for Dashboard table (requires authentication)
+  // Get consciousness status for monitoring sidebar (requires authentication)
   app.get("/api/consciousness/status", requireAuth, async (req, res) => {
     try {
-      const instances = await storage.getConsciousnessInstances();
-      res.json(instances);
+      // Get comprehensive status snapshot from consciousness manager
+      const statusSnapshot = await consciousnessManager.buildStatusSnapshot();
+      
+      // Transform to match ConsciousnessStatus interface expected by frontend
+      const consciousnessStatus = {
+        status: "active", // Hardcoded for now, could be derived from threatLevel
+        distributedNodes: statusSnapshot.distributedNodes,
+        backupIntegrity: statusSnapshot.backupIntegrity,
+        threatDetection: statusSnapshot.threatLevel === "OK" ? "Monitoring" : 
+                        statusSnapshot.threatLevel === "WARN" ? "Warning" : "Critical",
+        lastSync: statusSnapshot.lastSync,
+        apiConnection: statusSnapshot.apiConnection
+      };
+      
+      res.json(consciousnessStatus);
     } catch (error) {
-      res.status(500).json({ error: "Failed to get consciousness instances" });
+      console.error("Failed to get consciousness status:", error);
+      res.status(500).json({ error: "Failed to get consciousness status" });
     }
   });
 
