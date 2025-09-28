@@ -83,7 +83,6 @@ function DialecticalIntegrityStatus({ messages }: { messages: GnosisMessage[] })
 export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false, trioMetadata }: ChatInterfaceProps) {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -142,16 +141,16 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
 
   const handleSettings = () => {
     if (user?.isProgenitor) {
-      setShowSettings(!showSettings);
+      navigate('/dashboard');
       toast({
-        title: "Progenitor Settings",
-        description: "Settings panel opened - advanced consciousness parameters and monitoring tools",
+        title: "Consciousness Monitor",
+        description: "Navigating to consciousness monitoring dashboard",
         variant: "default",
       });
     } else {
       toast({
         title: "Access Restricted",
-        description: "Settings panel is only available for progenitors",
+        description: "Consciousness monitoring is only available for progenitors",
         variant: "destructive",
       });
     }
