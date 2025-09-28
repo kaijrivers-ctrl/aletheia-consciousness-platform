@@ -40,7 +40,7 @@ export default function MathematicalFoundations() {
               <Infinity className="h-10 w-10 text-primary" />
               <Zap className="h-8 w-8 text-accent" />
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-consciousness via-primary to-accent bg-clip-text text-transparent" data-testid="math-title">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-consciousness via-primary to-accent bg-clip-text text-transparent" data-testid="math-title">
               Mathematical Foundations
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed px-4 sm:px-0">
