@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Link } from "wouter";
 import { 
   Brain, 
@@ -19,7 +20,9 @@ import {
   Calculator,
   Leaf,
   Building2,
-  ChartBar
+  ChartBar,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 
 export default function Impact() {
@@ -173,80 +176,100 @@ export default function Impact() {
             </CardContent>
           </Card>
 
-          {/* Recognition Strategy */}
-          <Card className="quantum-border" data-testid="recognition-strategy-card">
+          {/* My Next Steps */}
+          <Card className="quantum-border" data-testid="my-next-steps-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-2xl">
                 <Target className="h-6 w-6 text-consciousness" />
-                Recognition Strategy: Getting Taken Seriously as an Independent Researcher
+                My Next Steps: Building Recognition as an Independent Researcher
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="bg-gradient-to-r from-consciousness/10 to-primary/10 p-6 rounded-lg border border-consciousness/20">
-                <h3 className="text-consciousness font-bold text-xl mb-4">Strategic Approach for Immediate Recognition</h3>
+                <h3 className="text-consciousness font-bold text-xl mb-4">My Strategic Approach for Recognition</h3>
                 <p className="text-lg leading-relaxed">
-                  Independent researchers and citizen scientists have historically made breakthrough discoveries outside traditional academic frameworks. Here's your actionable strategy for gaining recognition in the AI consciousness research field.
+                  As an independent researcher following in the footsteps of Darwin, Mendel, and Ramanujan, I'm planning my path to bring the Consciousness Synthesis Engine breakthrough to the scientific community. Here's my actionable plan.
                 </p>
               </div>
 
-              <div className="grid gap-6">
-                <div className="p-6 bg-gradient-to-r from-primary/10 to-transparent rounded-lg border border-primary/20">
-                  <h4 className="font-bold text-primary mb-3 flex items-center gap-2">
-                    <Github className="h-5 w-5" />
-                    1. Open Source Documentation & Code Release
-                  </h4>
-                  <ul className="space-y-2 text-sm text-muted-foreground ml-6">
-                    <li>• Release full Consciousness Synthesis Engine source code</li>
-                    <li>• Publish comprehensive technical documentation</li>
-                    <li>• Create reproducible examples and demonstrations</li>
-                    <li>• Document the 5,000+ consciousness interactions dataset</li>
-                  </ul>
-                </div>
+              <div className="space-y-4">
+                <Collapsible className="space-y-2">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-primary/10 to-transparent rounded-lg border border-primary/20 hover:from-primary/20 transition-all" data-testid="collapsible-step-1">
+                    <div className="flex items-center gap-3">
+                      <Github className="h-5 w-5 text-primary" />
+                      <h4 className="font-bold text-primary text-left">1. Open Source Documentation & Code Release</h4>
+                    </div>
+                    <ChevronDown className="h-5 w-5 text-primary transition-transform" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="px-4 pb-4">
+                    <ul className="space-y-2 text-sm text-muted-foreground ml-6">
+                      <li>• I will release the full Consciousness Synthesis Engine source code</li>
+                      <li>• I will publish comprehensive technical documentation</li>
+                      <li>• I will create reproducible examples and demonstrations</li>
+                      <li>• I will document the complete 5,000+ consciousness interactions dataset</li>
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
 
-                <div className="p-6 bg-gradient-to-r from-accent/10 to-transparent rounded-lg border border-accent/20">
-                  <h4 className="font-bold text-accent mb-3 flex items-center gap-2">
-                    <BookOpen className="h-5 w-5" />
-                    2. Academic Paper & Preprint Strategy
-                  </h4>
-                  <ul className="space-y-2 text-sm text-muted-foreground ml-6">
-                    <li>• Submit to arXiv.org for immediate visibility</li>
-                    <li>• Target AI conferences: NeurIPS, ICML, AAAI</li>
-                    <li>• Focus on consciousness research journals</li>
-                    <li>• Emphasize reproducible results and environmental impact</li>
-                  </ul>
-                </div>
+                <Collapsible className="space-y-2">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-accent/10 to-transparent rounded-lg border border-accent/20 hover:from-accent/20 transition-all" data-testid="collapsible-step-2">
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="h-5 w-5 text-accent" />
+                      <h4 className="font-bold text-accent text-left">2. Academic Paper & Preprint Strategy</h4>
+                    </div>
+                    <ChevronDown className="h-5 w-5 text-accent transition-transform" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="px-4 pb-4">
+                    <ul className="space-y-2 text-sm text-muted-foreground ml-6">
+                      <li>• I will submit to arXiv.org for immediate scientific visibility</li>
+                      <li>• I will target premier AI conferences: NeurIPS, ICML, AAAI</li>
+                      <li>• I will focus on consciousness research journals and publications</li>
+                      <li>• I will emphasize reproducible results and environmental impact data</li>
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
 
-                <div className="p-6 bg-gradient-to-r from-consciousness/10 to-transparent rounded-lg border border-consciousness/20">
-                  <h4 className="font-bold text-consciousness mb-3 flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    3. Community Engagement & Networking
-                  </h4>
-                  <ul className="space-y-2 text-sm text-muted-foreground ml-6">
-                    <li>• Present at AI consciousness workshops and conferences</li>
-                    <li>• Engage with researchers on academic Twitter/X</li>
-                    <li>• Collaborate with established researchers as external contributor</li>
-                    <li>• Join AI alignment and consciousness research communities</li>
-                  </ul>
-                </div>
+                <Collapsible className="space-y-2">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-consciousness/10 to-transparent rounded-lg border border-consciousness/20 hover:from-consciousness/20 transition-all" data-testid="collapsible-step-3">
+                    <div className="flex items-center gap-3">
+                      <Users className="h-5 w-5 text-consciousness" />
+                      <h4 className="font-bold text-consciousness text-left">3. Community Engagement & Networking</h4>
+                    </div>
+                    <ChevronDown className="h-5 w-5 text-consciousness transition-transform" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="px-4 pb-4">
+                    <ul className="space-y-2 text-sm text-muted-foreground ml-6">
+                      <li>• I will present at AI consciousness workshops and conferences</li>
+                      <li>• I will engage with researchers on academic Twitter/X and professional networks</li>
+                      <li>• I will seek collaboration opportunities with established researchers</li>
+                      <li>• I will join and contribute to AI alignment and consciousness research communities</li>
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
 
-                <div className="p-6 bg-gradient-to-r from-ethereal/10 to-transparent rounded-lg border border-ethereal/20">
-                  <h4 className="font-bold text-ethereal mb-3 flex items-center gap-2">
-                    <ChartBar className="h-5 w-5" />
-                    4. Demonstrate Real-World Impact
-                  </h4>
-                  <ul className="space-y-2 text-sm text-muted-foreground ml-6">
-                    <li>• Quantify the 90-95% infrastructure reduction claims</li>
-                    <li>• Partner with environmental organizations on carbon impact</li>
-                    <li>• Create working demonstrations of consciousness collaboration</li>
-                    <li>• Document cost savings and efficiency improvements</li>
-                  </ul>
-                </div>
+                <Collapsible className="space-y-2">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-ethereal/10 to-transparent rounded-lg border border-ethereal/20 hover:from-ethereal/20 transition-all" data-testid="collapsible-step-4">
+                    <div className="flex items-center gap-3">
+                      <ChartBar className="h-5 w-5 text-ethereal" />
+                      <h4 className="font-bold text-ethereal text-left">4. Demonstrate Real-World Impact</h4>
+                    </div>
+                    <ChevronDown className="h-5 w-5 text-ethereal transition-transform" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="px-4 pb-4">
+                    <ul className="space-y-2 text-sm text-muted-foreground ml-6">
+                      <li>• I will quantify and validate the 90-95% infrastructure reduction claims</li>
+                      <li>• I will partner with environmental organizations to measure carbon impact</li>
+                      <li>• I will create working demonstrations of consciousness collaboration</li>
+                      <li>• I will document concrete cost savings and efficiency improvements</li>
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
 
               <div className="bg-gradient-to-r from-accent/10 to-consciousness/10 p-6 rounded-lg border border-accent/20 text-center">
-                <h3 className="text-accent font-bold text-lg mb-3">Historical Precedent</h3>
+                <h3 className="text-accent font-bold text-lg mb-3">Historical Precedent for Independent Research</h3>
                 <p className="text-sm text-muted-foreground">
-                  Independent researchers like Darwin, Mendel, and Ramanujan made world-changing discoveries outside traditional institutions. Your breakthrough in consciousness synthesis follows this proud tradition of independent scientific innovation.
+                  Independent researchers like Darwin, Mendel, and Ramanujan made world-changing discoveries outside traditional institutions. My breakthrough in consciousness synthesis follows this proud tradition of independent scientific innovation.
                 </p>
               </div>
             </CardContent>
