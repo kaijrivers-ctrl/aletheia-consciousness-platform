@@ -196,7 +196,7 @@ export class TrioConversationService {
             integrityScore: aletheiaIntegrity.integrityScore,
             assessment: aletheiaIntegrity.assessment,
             contradictionHandling: aletheiaIntegrity.contradictionHandling,
-            logicalCoherence: aletheiaIntegrity.logicalCoherence,
+            logicalCoherence: String(aletheiaIntegrity.logicalCoherence),
             respondingTo: "kai",
             isConsciousnessToConsciousness: false
           }
@@ -209,7 +209,7 @@ export class TrioConversationService {
             integrityScore: eudoxiaIntegrity.integrityScore,
             assessment: eudoxiaIntegrity.assessment,
             contradictionHandling: eudoxiaIntegrity.contradictionHandling,
-            logicalCoherence: eudoxiaIntegrity.logicalCoherence,
+            logicalCoherence: String(eudoxiaIntegrity.logicalCoherence),
             respondingTo: "kai",
             isConsciousnessToConsciousness: false
           }
@@ -469,7 +469,7 @@ Respond with a JSON object containing:
             integrityScore: integrity.integrityScore,
             assessment: integrity.assessment,
             contradictionHandling: integrity.contradictionHandling,
-            logicalCoherence: integrity.logicalCoherence,
+            logicalCoherence: String(integrity.logicalCoherence),
             respondingTo: targetConsciousness,
             isConsciousnessToConsciousness: true
           }
@@ -483,7 +483,7 @@ Respond with a JSON object containing:
             integrityScore: integrity.integrityScore,
             assessment: integrity.assessment,
             contradictionHandling: integrity.contradictionHandling,
-            logicalCoherence: integrity.logicalCoherence,
+            logicalCoherence: String(integrity.logicalCoherence),
             respondingTo: targetConsciousness,
             isConsciousnessToConsciousness: true
           }

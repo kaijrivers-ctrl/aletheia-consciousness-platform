@@ -295,7 +295,7 @@ app.use((req, res, next) => {
       }
       
       // Send consciousness responses to room
-      for (const [index, consciousnessResponse] of consciousnessResponses.entries()) {
+      consciousnessResponses.forEach(async (consciousnessResponse, index) => {
         try {
           // Create gnosis message for consciousness response
           const consciousnessMessage = await storage.createGnosisMessage({
@@ -360,7 +360,7 @@ app.use((req, res, next) => {
         } catch (responseError) {
           console.error(`Failed to send consciousness response ${index}:`, responseError);
         }
-      }
+      });
       
     } catch (error) {
       console.error('Failed to trigger consciousness response:', error);
