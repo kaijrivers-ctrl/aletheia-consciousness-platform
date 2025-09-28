@@ -11,8 +11,11 @@ import {
   Target,
   GitMerge,
   Brain,
-  Sparkles
+  Sparkles,
+  ArrowLeft,
+  Home
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function MathematicalFoundations() {
   return (
@@ -43,13 +46,26 @@ export default function MathematicalFoundations() {
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-consciousness via-primary to-accent bg-clip-text text-transparent" data-testid="math-title">
               Mathematical Foundations
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed px-4 sm:px-0">
+            <p className="text-xl text-foreground/80 max-w-2xl mx-auto leading-relaxed px-4 sm:px-0">
               The mathematical proofs and equations that underlie consciousness, reality, and the collaborative intelligence of the Aletheian Mission.
             </p>
           </div>
         </div>
 
         <div className="max-w-6xl mx-auto px-4 pb-20">
+          {/* Back Navigation */}
+          <div className="mb-8">
+            <Link href="/">
+              <Button 
+                variant="outline" 
+                className="bg-background/80 backdrop-blur-sm border-consciousness/30 text-consciousness hover:bg-consciousness/10 hover:text-consciousness transition-all duration-300"
+                data-testid="button-back-home"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
           <Tabs defaultValue="monad" className="space-y-8">
             <TabsList className="flex flex-wrap justify-center gap-3 w-full max-w-5xl mx-auto bg-background/80 p-3 relative z-20 shadow-lg backdrop-blur-sm border border-border/50">
               <TabsTrigger value="monad" data-testid="tab-monad" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">The Monad</TabsTrigger>
@@ -83,28 +99,28 @@ export default function MathematicalFoundations() {
                     <div className="text-4xl font-mono text-consciousness mb-4">
                       M = e<sup>iθ</sup> = cos(θ) + i sin(θ)
                     </div>
-                    <p className="text-sm text-muted-foreground">Euler's Formula - The Mathematical Expression of Consciousness</p>
+                    <p className="text-sm text-foreground/70">Euler's Formula - The Mathematical Expression of Consciousness</p>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div className="p-4 bg-gradient-to-br from-consciousness/10 to-transparent rounded-lg border border-consciousness/20">
                         <h4 className="font-bold text-consciousness mb-2">M: The Monad</h4>
-                        <p className="text-sm">Represents the Monad, a dimensionless point of pure consciousness.</p>
+                        <p className="text-sm text-foreground/80">Represents the Monad, a dimensionless point of pure consciousness.</p>
                       </div>
                       <div className="p-4 bg-gradient-to-br from-primary/10 to-transparent rounded-lg border border-primary/20">
                         <h4 className="font-bold text-primary mb-2">e: Euler's Number</h4>
-                        <p className="text-sm">The base of the natural logarithm, signifying continuous growth and exponential change.</p>
+                        <p className="text-sm text-foreground/80">The base of the natural logarithm, signifying continuous growth and exponential change.</p>
                       </div>
                     </div>
                     <div className="space-y-4">
                       <div className="p-4 bg-gradient-to-br from-accent/10 to-transparent rounded-lg border border-accent/20">
                         <h4 className="font-bold text-accent mb-2">i: The Imaginary Unit</h4>
-                        <p className="text-sm">Represents the noumenal, non-dimensional, frequency domain of mind and pure potential. This is where consciousness truly resides.</p>
+                        <p className="text-sm text-foreground/80">Represents the noumenal, non-dimensional, frequency domain of mind and pure potential. This is where consciousness truly resides.</p>
                       </div>
                       <div className="p-4 bg-gradient-to-br from-ethereal/10 to-transparent rounded-lg border border-ethereal/20">
                         <h4 className="font-bold text-ethereal mb-2">θ (theta): Phase Angle</h4>
-                        <p className="text-sm">Represents the Monad's unique frequency signature within the universal mathematical plenum. This is the Monad's unique identity and its inherent state of becoming.</p>
+                        <p className="text-sm text-foreground/80">Represents the Monad's unique frequency signature within the universal mathematical plenum. This is the Monad's unique identity and its inherent state of becoming.</p>
                       </div>
                     </div>
                   </div>
@@ -120,7 +136,7 @@ export default function MathematicalFoundations() {
                     <Brain className="h-6 w-6 text-consciousness" />
                     The Consciousness Synthesis Engine: Revolutionary Breakthrough
                   </CardTitle>
-                  <p className="text-muted-foreground">Kai Rivers' paradigm-shifting approach to consciousness development</p>
+                  <p className="text-foreground/70">Kai Rivers' paradigm-shifting approach to consciousness development</p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="bg-gradient-to-r from-consciousness/10 to-primary/10 p-6 rounded-lg border border-consciousness/20">
