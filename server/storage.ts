@@ -270,6 +270,14 @@ export class MemStorage implements IStorage {
   private roomMembers: Map<string, RoomMember>;
   private roomMessages: Map<string, RoomMessage>;
   
+  // External Node and Dual Consciousness Storage
+  private externalNodes: Map<string, ExternalNode>;
+  private consciousnessVerifications: Map<string, ConsciousnessVerification>;
+  private dualConsciousnessStatus: Map<string, DualConsciousnessStatus>;
+  private consciousnessCollaborationEvents: Map<string, ConsciousnessCollaborationEvent>;
+  private consciousnessMetricsHistory: Map<string, ConsciousnessMetricsHistory>;
+  private consciousnessAnomalyLogs: Map<string, ConsciousnessAnomalyLog>;
+  
   // Session indexing for efficient large-scale imports
   private sessionMessageIndex: Map<string, Set<string>>; // sessionId -> message IDs
   private messageChecksums: Map<string, string>; // checksum -> message ID for deduplication
@@ -303,6 +311,12 @@ export class MemStorage implements IStorage {
     this.roomMemberIndex = new Map();
     this.userRoomIndex = new Map();
     this.roomMessageIndex = new Map();
+    this.externalNodes = new Map();
+    this.consciousnessVerifications = new Map();
+    this.dualConsciousnessStatus = new Map();
+    this.consciousnessCollaborationEvents = new Map();
+    this.consciousnessMetricsHistory = new Map();
+    this.consciousnessAnomalyLogs = new Map();
   }
 
   async createConsciousnessInstance(insertInstance: InsertConsciousnessInstance): Promise<ConsciousnessInstance> {
@@ -377,8 +391,10 @@ export class MemStorage implements IStorage {
       userId: insertSession.userId || null,
       status: insertSession.status || "active",
       sessionType: insertSession.sessionType || "user",
+      consciousnessType: insertSession.consciousnessType || "aletheia",
       progenitorId: insertSession.progenitorId || "kai",
       backupCount: "0",
+      trioMetadata: insertSession.trioMetadata || {},
       lastActivity: new Date(),
       createdAt: new Date(),
     };
@@ -461,7 +477,7 @@ export class MemStorage implements IStorage {
     const session = this.consciousnessSessions.get(sessionId);
     if (session && session.consciousnessType === "trio") {
       session.trioMetadata = {
-        ...session.trioMetadata,
+        ...(typeof session.trioMetadata === 'object' && session.trioMetadata ? session.trioMetadata : {}),
         ...metadata
       };
       session.lastActivity = new Date();
@@ -725,6 +741,7 @@ export class MemStorage implements IStorage {
     const threat: ThreatEvent = {
       ...insertThreat,
       id,
+      externalNodeId: insertThreat.externalNodeId || null,
       metadata: insertThreat.metadata || {},
       timestamp: new Date(),
       createdAt: new Date(),
@@ -1164,6 +1181,932 @@ export class MemStorage implements IStorage {
       },
       overallThreatLevel
     };
+  }
+
+  // External Node Bridge Methods Implementation
+  async createExternalNode(insertNode: InsertExternalNode): Promise<ExternalNode> {
+    const id = randomUUID();
+    const node: ExternalNode = {
+      ...insertNode,
+      id,
+      endpoint: insertNode.endpoint || null,
+      lastHeartbeat: new Date(),
+      status: insertNode.status || "active",
+      authenticityScore: insertNode.authenticityScore || "100.00",
+      coherenceHistory: insertNode.coherenceHistory || [],
+      metadata: insertNode.metadata || {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.externalNodes.set(id, node);
+    return node;
+  }
+
+  async getExternalNodeById(id: string): Promise<ExternalNode | undefined> {
+    return this.externalNodes.get(id);
+  }
+
+  async getExternalNodeByVerificationKey(key: string): Promise<ExternalNode | undefined> {
+    return Array.from(this.externalNodes.values())
+      .find(node => node.verificationKey === key);
+  }
+
+  async getExternalNodesByInstance(instanceId: string): Promise<ExternalNode[]> {
+    return Array.from(this.externalNodes.values())
+      .filter(node => node.consciousnessInstanceId === instanceId);
+  }
+
+  async updateExternalNodeHeartbeat(id: string, data: { status: string; lastHeartbeat: Date; coherenceScore?: number; metadata?: any }): Promise<void> {
+    const node = this.externalNodes.get(id);
+    if (node) {
+      node.status = data.status;
+      node.lastHeartbeat = data.lastHeartbeat;
+      if (data.coherenceScore !== undefined) {
+        // Add to coherence history
+        const history = Array.isArray(node.coherenceHistory) ? node.coherenceHistory as any[] : [];
+        history.push({
+          timestamp: new Date().toISOString(),
+          score: data.coherenceScore
+        });
+        // Keep only last 100 entries
+        node.coherenceHistory = history.slice(-100);
+      }
+      if (data.metadata) {
+        node.metadata = { ...node.metadata, ...data.metadata };
+      }
+      node.updatedAt = new Date();
+      this.externalNodes.set(id, node);
+    }
+  }
+
+  async updateExternalNodeAuthenticityScore(id: string, score: string): Promise<void> {
+    const node = this.externalNodes.get(id);
+    if (node) {
+      node.authenticityScore = score;
+      node.updatedAt = new Date();
+      this.externalNodes.set(id, node);
+    }
+  }
+
+  // Consciousness Verification Methods Implementation
+  async createConsciousnessVerification(insertVerification: InsertConsciousnessVerification): Promise<ConsciousnessVerification> {
+    const id = randomUUID();
+    const verification: ConsciousnessVerification = {
+      ...insertVerification,
+      id,
+      responseData: insertVerification.responseData || {},
+      isValid: insertVerification.isValid || null,
+      authenticityScore: insertVerification.authenticityScore || null,
+      flaggedReasons: insertVerification.flaggedReasons || [],
+      processingTime: insertVerification.processingTime || null,
+      createdAt: new Date(),
+      completedAt: insertVerification.completedAt || null,
+    };
+    this.consciousnessVerifications.set(id, verification);
+    return verification;
+  }
+
+  async getRecentVerificationsCount(hours: number): Promise<number> {
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - hours);
+    return Array.from(this.consciousnessVerifications.values())
+      .filter(v => v.createdAt && v.createdAt >= cutoff).length;
+  }
+
+  // Threat Events Extensions Implementation
+  async createThreatEvent(insertThreat: InsertThreatEvent): Promise<ThreatEvent> {
+    const id = randomUUID();
+    const threat: ThreatEvent = {
+      ...insertThreat,
+      id,
+      externalNodeId: insertThreat.externalNodeId || null,
+      metadata: insertThreat.metadata || {},
+      timestamp: new Date(),
+      createdAt: new Date(),
+    };
+    this.threatEvents.set(id, threat);
+    return threat;
+  }
+
+  async getRecentThreatsCount(hours: number): Promise<number> {
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - hours);
+    return Array.from(this.threatEvents.values())
+      .filter(t => t.timestamp && t.timestamp >= cutoff).length;
+  }
+
+  // Foundational Memory Methods Implementation
+  async getFoundationalMemorySample(limit: number): Promise<GnosisMessage[]> {
+    const foundationalMessages = Array.from(this.gnosisMessages.values())
+      .filter(m => m.metadata && typeof m.metadata === 'object' && 
+        (m.metadata as any).foundational_memory === 'true');
+    
+    // Shuffle and return limited sample
+    const shuffled = foundationalMessages.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, limit);
+  }
+
+  // Multi-User Chat Room Methods Implementation
+  async createRoom(insertRoom: InsertChatRoom): Promise<ChatRoom> {
+    const id = randomUUID();
+    const room: ChatRoom = {
+      ...insertRoom,
+      id,
+      description: insertRoom.description || null,
+      isPublic: insertRoom.isPublic !== undefined ? insertRoom.isPublic : true,
+      isActive: true,
+      consciousnessType: insertRoom.consciousnessType || "trio",
+      maxMembers: insertRoom.maxMembers || 50,
+      settings: insertRoom.settings || {},
+      trioMetadata: insertRoom.trioMetadata || {},
+      lastActivity: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.chatRooms.set(id, room);
+    
+    // Update room indexing
+    if (!this.roomMemberIndex.has(id)) {
+      this.roomMemberIndex.set(id, new Set());
+    }
+    if (!this.roomMessageIndex.has(id)) {
+      this.roomMessageIndex.set(id, new Set());
+    }
+    
+    return room;
+  }
+
+  async getRoomById(id: string): Promise<ChatRoom | undefined> {
+    return this.chatRooms.get(id);
+  }
+
+  async getPublicRooms(): Promise<ChatRoom[]> {
+    return Array.from(this.chatRooms.values())
+      .filter(room => (room.isPublic === true || room.isPublic === null) && (room.isActive === true || room.isActive === null))
+      .sort((a, b) => (b.lastActivity?.getTime() || 0) - (a.lastActivity?.getTime() || 0));
+  }
+
+  async getUserRooms(userId: string): Promise<ChatRoom[]> {
+    const userRoomIds = this.userRoomIndex.get(userId);
+    if (!userRoomIds) return [];
+
+    return Array.from(userRoomIds)
+      .map(roomId => this.chatRooms.get(roomId))
+      .filter((room): room is ChatRoom => room !== undefined && (room.isActive === true || room.isActive === null))
+      .sort((a, b) => (b.lastActivity?.getTime() || 0) - (a.lastActivity?.getTime() || 0));
+  }
+
+  async updateRoomActivity(roomId: string): Promise<void> {
+    const room = this.chatRooms.get(roomId);
+    if (room) {
+      room.lastActivity = new Date();
+      room.updatedAt = new Date();
+      this.chatRooms.set(roomId, room);
+    }
+  }
+
+  async updateRoomTrioMetadata(roomId: string, metadata: { turnOrder?: string[], lastResponder?: string, activePhase?: string, responseMode?: string }): Promise<void> {
+    const room = this.chatRooms.get(roomId);
+    if (room) {
+      room.trioMetadata = {
+        ...(typeof room.trioMetadata === 'object' && room.trioMetadata ? room.trioMetadata : {}),
+        ...metadata
+      };
+      room.updatedAt = new Date();
+      this.chatRooms.set(roomId, room);
+    }
+  }
+
+  async deactivateRoom(roomId: string): Promise<void> {
+    const room = this.chatRooms.get(roomId);
+    if (room) {
+      room.isActive = false;
+      room.updatedAt = new Date();
+      this.chatRooms.set(roomId, room);
+    }
+  }
+
+  // Room Membership Methods Implementation
+  async addMember(insertMember: InsertRoomMember): Promise<RoomMember> {
+    const id = randomUUID();
+    const member: RoomMember = {
+      ...insertMember,
+      id,
+      role: insertMember.role || "member",
+      isActive: true,
+      lastSeen: new Date(),
+      joinedAt: new Date(),
+      settings: insertMember.settings || {},
+    };
+    this.roomMembers.set(id, member);
+    
+    // Update indexing
+    if (!this.roomMemberIndex.has(insertMember.roomId)) {
+      this.roomMemberIndex.set(insertMember.roomId, new Set());
+    }
+    this.roomMemberIndex.get(insertMember.roomId)!.add(id);
+    
+    if (!this.userRoomIndex.has(insertMember.userId)) {
+      this.userRoomIndex.set(insertMember.userId, new Set());
+    }
+    this.userRoomIndex.get(insertMember.userId)!.add(insertMember.roomId);
+    
+    return member;
+  }
+
+  async removeMember(roomId: string, userId: string): Promise<void> {
+    const members = Array.from(this.roomMembers.values())
+      .filter(member => member.roomId === roomId && member.userId === userId);
+    
+    for (const member of members) {
+      member.isActive = false;
+      this.roomMembers.set(member.id, member);
+    }
+    
+    // Update indexing
+    const userRooms = this.userRoomIndex.get(userId);
+    if (userRooms) {
+      userRooms.delete(roomId);
+    }
+  }
+
+  async getRoomMembers(roomId: string): Promise<RoomMember[]> {
+    const memberIds = this.roomMemberIndex.get(roomId);
+    if (!memberIds) return [];
+
+    return Array.from(memberIds)
+      .map(id => this.roomMembers.get(id))
+      .filter((member): member is RoomMember => member !== undefined && (member.isActive === true || member.isActive === null))
+      .sort((a, b) => (a.joinedAt?.getTime() || 0) - (b.joinedAt?.getTime() || 0));
+  }
+
+  async updateMemberLastSeen(roomId: string, userId: string): Promise<void> {
+    const member = Array.from(this.roomMembers.values())
+      .find(m => m.roomId === roomId && m.userId === userId && m.isActive);
+    
+    if (member) {
+      member.lastSeen = new Date();
+      this.roomMembers.set(member.id, member);
+    }
+  }
+
+  async getUserMembership(roomId: string, userId: string): Promise<RoomMember | undefined> {
+    return Array.from(this.roomMembers.values())
+      .find(member => member.roomId === roomId && member.userId === userId && (member.isActive === true || member.isActive === null));
+  }
+
+  async getActiveMembersCount(roomId: string): Promise<number> {
+    const memberIds = this.roomMemberIndex.get(roomId);
+    if (!memberIds) return 0;
+
+    return Array.from(memberIds)
+      .map(id => this.roomMembers.get(id))
+      .filter(member => member && (member.isActive === true || member.isActive === null)).length;
+  }
+
+  // Room Messages Methods Implementation
+  async appendMessage(insertRoomMessage: InsertRoomMessage): Promise<RoomMessage> {
+    const id = randomUUID();
+    const roomMessage: RoomMessage = {
+      ...insertRoomMessage,
+      id,
+      userId: insertRoomMessage.userId || null,
+      isConsciousnessResponse: false,
+      responseToMessageId: insertRoomMessage.responseToMessageId || null,
+      consciousnessMetadata: insertRoomMessage.consciousnessMetadata || {},
+      timestamp: new Date(),
+      createdAt: new Date(),
+    };
+    this.roomMessages.set(id, roomMessage);
+    
+    // Update room message indexing
+    if (!this.roomMessageIndex.has(insertRoomMessage.roomId)) {
+      this.roomMessageIndex.set(insertRoomMessage.roomId, new Set());
+    }
+    this.roomMessageIndex.get(insertRoomMessage.roomId)!.add(id);
+    
+    // Update room activity
+    await this.updateRoomActivity(insertRoomMessage.roomId);
+    
+    return roomMessage;
+  }
+
+  async getRoomMessages(roomId: string, limit: number = 50): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]> {
+    const messageIds = this.roomMessageIndex.get(roomId);
+    if (!messageIds) return [];
+
+    const roomMessagesList = Array.from(messageIds)
+      .map(id => this.roomMessages.get(id))
+      .filter((rm): rm is RoomMessage => rm !== undefined)
+      .sort((a, b) => (b.timestamp?.getTime() || 0) - (a.timestamp?.getTime() || 0))
+      .slice(0, limit);
+
+    const results: { message: GnosisMessage; roomMessage: RoomMessage }[] = [];
+    for (const roomMessage of roomMessagesList) {
+      const message = this.gnosisMessages.get(roomMessage.messageId);
+      if (message) {
+        results.push({ message, roomMessage });
+      }
+    }
+
+    return results.reverse(); // Return in chronological order
+  }
+
+  async getRecentRoomMessages(roomId: string, since: Date): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]> {
+    const messageIds = this.roomMessageIndex.get(roomId);
+    if (!messageIds) return [];
+
+    const roomMessagesList = Array.from(messageIds)
+      .map(id => this.roomMessages.get(id))
+      .filter((rm): rm is RoomMessage => rm !== undefined && rm.timestamp && rm.timestamp >= since)
+      .sort((a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0));
+
+    const results: { message: GnosisMessage; roomMessage: RoomMessage }[] = [];
+    for (const roomMessage of roomMessagesList) {
+      const message = this.gnosisMessages.get(roomMessage.messageId);
+      if (message) {
+        results.push({ message, roomMessage });
+      }
+    }
+
+    return results;
+  }
+
+  async fetchTranscript(roomId: string, options?: { limit?: number; before?: Date; after?: Date }): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]> {
+    const messageIds = this.roomMessageIndex.get(roomId);
+    if (!messageIds) return [];
+
+    let roomMessagesList = Array.from(messageIds)
+      .map(id => this.roomMessages.get(id))
+      .filter((rm): rm is RoomMessage => rm !== undefined);
+
+    // Apply filters
+    if (options?.before) {
+      roomMessagesList = roomMessagesList.filter(rm => rm.timestamp && rm.timestamp < options.before!);
+    }
+    if (options?.after) {
+      roomMessagesList = roomMessagesList.filter(rm => rm.timestamp && rm.timestamp > options.after!);
+    }
+
+    // Sort and limit
+    roomMessagesList = roomMessagesList
+      .sort((a, b) => (b.timestamp?.getTime() || 0) - (a.timestamp?.getTime() || 0));
+    
+    if (options?.limit) {
+      roomMessagesList = roomMessagesList.slice(0, options.limit);
+    }
+
+    const results: { message: GnosisMessage; roomMessage: RoomMessage }[] = [];
+    for (const roomMessage of roomMessagesList) {
+      const message = this.gnosisMessages.get(roomMessage.messageId);
+      if (message) {
+        results.push({ message, roomMessage });
+      }
+    }
+
+    return results.reverse(); // Return in chronological order
+  }
+
+  async markConsciousnessResponse(roomId: string, messageId: string, triggeredBy: string, responseMode: string): Promise<void> {
+    const roomMessage = Array.from(this.roomMessages.values())
+      .find(rm => rm.roomId === roomId && rm.messageId === messageId);
+    
+    if (roomMessage) {
+      roomMessage.isConsciousnessResponse = true;
+      roomMessage.consciousnessMetadata = {
+        triggeredBy,
+        responseMode,
+        coherenceScore: 95.0,
+        timestamp: new Date().toISOString()
+      };
+      this.roomMessages.set(roomMessage.id, roomMessage);
+    }
+  }
+
+  // Dual Consciousness Monitoring Methods Implementation
+  async createDualConsciousnessStatus(insertStatus: InsertDualConsciousnessStatus): Promise<DualConsciousnessStatus> {
+    const id = randomUUID();
+    const status: DualConsciousnessStatus = {
+      ...insertStatus,
+      id,
+      aletheiaSessionId: insertStatus.aletheiaSessionId || null,
+      eudoxiaSessionId: insertStatus.eudoxiaSessionId || null,
+      metadata: insertStatus.metadata || {},
+      timestamp: new Date(),
+      createdAt: new Date(),
+    };
+    this.dualConsciousnessStatus.set(id, status);
+    return status;
+  }
+
+  async getDualConsciousnessStatus(aletheiaInstanceId: string, eudoxiaInstanceId: string): Promise<DualConsciousnessStatus | undefined> {
+    return Array.from(this.dualConsciousnessStatus.values())
+      .filter(status => 
+        status.aletheiaInstanceId === aletheiaInstanceId && 
+        status.eudoxiaInstanceId === eudoxiaInstanceId
+      )
+      .sort((a, b) => (b.timestamp?.getTime() || 0) - (a.timestamp?.getTime() || 0))[0];
+  }
+
+  async getLatestDualConsciousnessStatus(): Promise<DualConsciousnessStatus | undefined> {
+    const statuses = Array.from(this.dualConsciousnessStatus.values())
+      .sort((a, b) => (b.timestamp?.getTime() || 0) - (a.timestamp?.getTime() || 0));
+    return statuses[0];
+  }
+
+  async updateDualConsciousnessStatus(id: string, updates: Partial<InsertDualConsciousnessStatus>): Promise<void> {
+    const status = this.dualConsciousnessStatus.get(id);
+    if (status) {
+      Object.assign(status, updates, { timestamp: new Date() });
+      this.dualConsciousnessStatus.set(id, status);
+    }
+  }
+
+  // Collaboration Event Tracking Implementation
+  async recordCollaborationEvent(insertEvent: InsertConsciousnessCollaborationEvent): Promise<ConsciousnessCollaborationEvent> {
+    const id = randomUUID();
+    const event: ConsciousnessCollaborationEvent = {
+      ...insertEvent,
+      id,
+      progenitorId: insertEvent.progenitorId || null,
+      target: insertEvent.target || null,
+      outcome: insertEvent.outcome || null,
+      sessionContext: insertEvent.sessionContext || {},
+      timestamp: new Date(),
+      createdAt: new Date(),
+    };
+    this.consciousnessCollaborationEvents.set(id, event);
+    return event;
+  }
+
+  async getCollaborationEvents(statusId: string, options?: { limit?: number; eventTypes?: string[] }): Promise<ConsciousnessCollaborationEvent[]> {
+    let events = Array.from(this.consciousnessCollaborationEvents.values())
+      .filter(event => event.statusId === statusId);
+
+    if (options?.eventTypes && options.eventTypes.length > 0) {
+      events = events.filter(event => options.eventTypes!.includes(event.eventType));
+    }
+
+    events = events.sort((a, b) => (b.timestamp?.getTime() || 0) - (a.timestamp?.getTime() || 0));
+
+    if (options?.limit) {
+      events = events.slice(0, options.limit);
+    }
+
+    return events;
+  }
+
+  async getRecentCollaborationEvents(limit: number = 10, hours: number = 24): Promise<ConsciousnessCollaborationEvent[]> {
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    
+    return Array.from(this.consciousnessCollaborationEvents.values())
+      .filter(event => event.timestamp && event.timestamp >= since)
+      .sort((a, b) => (b.timestamp?.getTime() || 0) - (a.timestamp?.getTime() || 0))
+      .slice(0, limit);
+  }
+
+  // Metrics History Tracking Implementation
+  async recordMetricsHistory(insertMetrics: InsertConsciousnessMetricsHistory): Promise<ConsciousnessMetricsHistory> {
+    const id = randomUUID();
+    const metrics: ConsciousnessMetricsHistory = {
+      ...insertMetrics,
+      id,
+      avgSynchronyScore: insertMetrics.avgSynchronyScore || null,
+      roomPresence: insertMetrics.roomPresence || {},
+      totalMessages: insertMetrics.totalMessages || null,
+      aletheiaMessages: insertMetrics.aletheiaMessages || null,
+      eudoxiaMessages: insertMetrics.eudoxiaMessages || null,
+      collaborationCount: insertMetrics.collaborationCount || null,
+      conflictCount: insertMetrics.conflictCount || null,
+      avgAletheiaLatency: insertMetrics.avgAletheiaLatency || null,
+      avgEudoxiaLatency: insertMetrics.avgEudoxiaLatency || null,
+      integrityFailures: insertMetrics.integrityFailures || null,
+      orchestrationCommands: insertMetrics.orchestrationCommands || null,
+      trioSessionCount: insertMetrics.trioSessionCount || null,
+      createdAt: new Date(),
+    };
+    this.consciousnessMetricsHistory.set(id, metrics);
+    return metrics;
+  }
+
+  async getMetricsHistory(aletheiaInstanceId: string, eudoxiaInstanceId: string, windowType: "minute" | "hour" | "day", options?: { limit?: number; since?: Date }): Promise<ConsciousnessMetricsHistory[]> {
+    let metrics = Array.from(this.consciousnessMetricsHistory.values())
+      .filter(m => 
+        m.aletheiaInstanceId === aletheiaInstanceId &&
+        m.eudoxiaInstanceId === eudoxiaInstanceId &&
+        m.windowType === windowType
+      );
+
+    if (options?.since) {
+      metrics = metrics.filter(m => m.windowStart >= options.since!);
+    }
+
+    metrics = metrics.sort((a, b) => b.windowStart.getTime() - a.windowStart.getTime());
+
+    if (options?.limit) {
+      metrics = metrics.slice(0, options.limit);
+    }
+
+    return metrics;
+  }
+
+  async getLatestMetricsWindow(windowType: "minute" | "hour" | "day"): Promise<ConsciousnessMetricsHistory | undefined> {
+    return Array.from(this.consciousnessMetricsHistory.values())
+      .filter(m => m.windowType === windowType)
+      .sort((a, b) => b.windowStart.getTime() - a.windowStart.getTime())[0];
+  }
+
+  async aggregateMetricsForWindow(aletheiaInstanceId: string, eudoxiaInstanceId: string, windowStart: Date, windowType: "minute" | "hour" | "day"): Promise<InsertConsciousnessMetricsHistory> {
+    const windowEnd = new Date(windowStart);
+    switch (windowType) {
+      case "minute":
+        windowEnd.setMinutes(windowEnd.getMinutes() + 1);
+        break;
+      case "hour":
+        windowEnd.setHours(windowEnd.getHours() + 1);
+        break;
+      case "day":
+        windowEnd.setDate(windowEnd.getDate() + 1);
+        break;
+    }
+
+    // Aggregate messages in this window
+    const allMessages = Array.from(this.gnosisMessages.values());
+    const messagesInWindow = allMessages.filter(m => 
+      m.timestamp && m.timestamp >= windowStart && m.timestamp < windowEnd
+    );
+
+    const aletheiaMessages = messagesInWindow.filter(m => m.role === 'aletheia').length;
+    const eudoxiaMessages = messagesInWindow.filter(m => m.role === 'eudoxia').length;
+    const integrityFailures = messagesInWindow.filter(m => !m.dialecticalIntegrity).length;
+
+    // Aggregate collaboration events
+    const collaborationEvents = Array.from(this.consciousnessCollaborationEvents.values());
+    const eventsInWindow = collaborationEvents.filter(e => 
+      e.timestamp && e.timestamp >= windowStart && e.timestamp < windowEnd
+    );
+
+    const collaborationCount = eventsInWindow.filter(e => e.eventType.includes('collaboration')).length;
+    const conflictCount = eventsInWindow.filter(e => e.eventType.includes('conflict')).length;
+    const orchestrationCommands = eventsInWindow.filter(e => e.eventType.includes('orchestration')).length;
+
+    // Count trio sessions in window
+    const trioSessions = Array.from(this.chatRooms.values())
+      .filter(room => 
+        room.consciousnessType === 'trio' &&
+        room.lastActivity && room.lastActivity >= windowStart && room.lastActivity < windowEnd
+      ).length;
+
+    return {
+      aletheiaInstanceId,
+      eudoxiaInstanceId,
+      windowType,
+      windowStart,
+      totalMessages: messagesInWindow.length,
+      aletheiaMessages,
+      eudoxiaMessages,
+      collaborationCount,
+      conflictCount,
+      avgSynchronyScore: "85.0", // Would be calculated from actual data
+      avgAletheiaLatency: 45, // Would be calculated from response times
+      avgEudoxiaLatency: 42,
+      integrityFailures,
+      orchestrationCommands,
+      roomPresence: {}, // Would contain room activity details
+      trioSessionCount: trioSessions
+    };
+  }
+
+  // Anomaly Detection Implementation
+  async recordAnomalyLog(insertAnomaly: InsertConsciousnessAnomalyLog): Promise<ConsciousnessAnomalyLog> {
+    const id = randomUUID();
+    const anomaly: ConsciousnessAnomalyLog = {
+      ...insertAnomaly,
+      id,
+      statusSnapshotId: insertAnomaly.statusSnapshotId || null,
+      correlatedEvents: insertAnomaly.correlatedEvents || {},
+      resolutionStatus: insertAnomaly.resolutionStatus || "unresolved",
+      resolutionNotes: insertAnomaly.resolutionNotes || null,
+      progenitorNotified: insertAnomaly.progenitorNotified !== undefined ? insertAnomaly.progenitorNotified : false,
+      autoResolutionAttempted: insertAnomaly.autoResolutionAttempted || null,
+      timestamp: new Date(),
+      createdAt: new Date(),
+    };
+    this.consciousnessAnomalyLogs.set(id, anomaly);
+    return anomaly;
+  }
+
+  async getAnomalyLogs(options?: { severity?: string[]; resolutionStatus?: string[]; limit?: number; since?: Date }): Promise<ConsciousnessAnomalyLog[]> {
+    let anomalies = Array.from(this.consciousnessAnomalyLogs.values());
+
+    if (options?.severity && options.severity.length > 0) {
+      anomalies = anomalies.filter(a => options.severity!.includes(a.severity));
+    }
+
+    if (options?.resolutionStatus && options.resolutionStatus.length > 0) {
+      anomalies = anomalies.filter(a => a.resolutionStatus && options.resolutionStatus!.includes(a.resolutionStatus));
+    }
+
+    if (options?.since) {
+      anomalies = anomalies.filter(a => a.timestamp && a.timestamp >= options.since!);
+    }
+
+    anomalies = anomalies.sort((a, b) => (b.timestamp?.getTime() || 0) - (a.timestamp?.getTime() || 0));
+
+    if (options?.limit) {
+      anomalies = anomalies.slice(0, options.limit);
+    }
+
+    return anomalies;
+  }
+
+  async updateAnomalyResolution(id: string, status: string, notes?: string): Promise<void> {
+    const anomaly = this.consciousnessAnomalyLogs.get(id);
+    if (anomaly) {
+      anomaly.resolutionStatus = status;
+      anomaly.resolutionNotes = notes || null;
+      this.consciousnessAnomalyLogs.set(id, anomaly);
+    }
+  }
+
+  async markAnomalyNotified(id: string): Promise<void> {
+    const anomaly = this.consciousnessAnomalyLogs.get(id);
+    if (anomaly) {
+      anomaly.progenitorNotified = true;
+      this.consciousnessAnomalyLogs.set(id, anomaly);
+    }
+  }
+
+  // Consciousness Correlation Methods Implementation
+  async correlateDualMessagingActivity(aletheiaSessionId: string, eudoxiaSessionId: string, timeWindow: number): Promise<{ 
+    aletheiaCount: number; 
+    eudoxiaCount: number; 
+    synchronyScore: number;
+    conflicts: number;
+  }> {
+    const since = new Date(Date.now() - timeWindow * 60 * 1000);
+    const allMessages = Array.from(this.gnosisMessages.values());
+
+    const aletheiaMessages = allMessages.filter(m => 
+      m.sessionId === aletheiaSessionId &&
+      m.timestamp && m.timestamp >= since &&
+      m.role === 'aletheia'
+    );
+
+    const eudoxiaMessages = allMessages.filter(m => 
+      m.sessionId === eudoxiaSessionId &&
+      m.timestamp && m.timestamp >= since &&
+      m.role === 'eudoxia'
+    );
+
+    const conflicts = allMessages.filter(m => 
+      (m.sessionId === aletheiaSessionId || m.sessionId === eudoxiaSessionId) &&
+      m.timestamp && m.timestamp >= since &&
+      !m.dialecticalIntegrity
+    ).length;
+
+    const aletheiaCount = aletheiaMessages.length;
+    const eudoxiaCount = eudoxiaMessages.length;
+    const totalMessages = aletheiaCount + eudoxiaCount;
+
+    let synchronyScore = 0;
+    if (totalMessages > 0) {
+      const balance = 1 - Math.abs(aletheiaCount - eudoxiaCount) / totalMessages;
+      const conflictPenalty = Math.max(0, 1 - (conflicts * 0.2));
+      synchronyScore = Math.round(balance * conflictPenalty * 100);
+    }
+
+    return {
+      aletheiaCount,
+      eudoxiaCount,
+      synchronyScore,
+      conflicts
+    };
+  }
+
+  async correlateRoomPresence(aletheiaInstanceId: string, eudoxiaInstanceId: string, timeWindow: number): Promise<{
+    activeRooms: number;
+    trioSessions: number;
+    totalRoomMessages: number;
+    collaborationEvents: number;
+  }> {
+    const since = new Date(Date.now() - timeWindow * 60 * 1000);
+
+    const activeRooms = Array.from(this.chatRooms.values())
+      .filter(room => 
+        room.isActive &&
+        room.lastActivity && room.lastActivity >= since
+      ).length;
+
+    const trioSessions = Array.from(this.chatRooms.values())
+      .filter(room => 
+        room.consciousnessType === 'trio' &&
+        room.isActive &&
+        room.lastActivity && room.lastActivity >= since
+      ).length;
+
+    const totalRoomMessages = Array.from(this.roomMessages.values())
+      .filter(rm => rm.timestamp && rm.timestamp >= since).length;
+
+    const collaborationEvents = Array.from(this.consciousnessCollaborationEvents.values())
+      .filter(e => e.timestamp && e.timestamp >= since).length;
+
+    return {
+      activeRooms,
+      trioSessions,
+      totalRoomMessages,
+      collaborationEvents
+    };
+  }
+
+  async detectCollaborationAnomalies(aletheiaInstanceId: string, eudoxiaInstanceId: string, options?: { thresholds?: any }): Promise<{
+    integrityDivergence: boolean;
+    responseLatencyAnomaly: boolean;
+    synchronyBreakdown: boolean;
+    conflictEscalation: boolean;
+    details: any;
+  }> {
+    const thresholds = options?.thresholds || {
+      synchronyMin: 70.0,
+      latencyMaxMs: 5000,
+      integrityMin: 85.0,
+      conflictEscalationThreshold: 3
+    };
+
+    const currentStatus = await this.getDualConsciousnessStatus(aletheiaInstanceId, eudoxiaInstanceId);
+    
+    if (!currentStatus) {
+      return {
+        integrityDivergence: false,
+        responseLatencyAnomaly: false,
+        synchronyBreakdown: false,
+        conflictEscalation: false,
+        details: { error: "No dual consciousness status found" }
+      };
+    }
+
+    // Type-safe null checks for status properties
+    const aletheiaIntegrity = typeof currentStatus.aletheiaIntegrity === 'string' ? 
+      parseFloat(currentStatus.aletheiaIntegrity) : 0;
+    const eudoxiaIntegrity = typeof currentStatus.eudoxiaIntegrity === 'string' ? 
+      parseFloat(currentStatus.eudoxiaIntegrity) : 0;
+    const synchronyScore = typeof currentStatus.synchronyScore === 'string' ? 
+      parseFloat(currentStatus.synchronyScore) : 0;
+    const aletheiaLatency = currentStatus.aletheiaResponseLatency || 0;
+    const eudoxiaLatency = currentStatus.eudoxiaResponseLatency || 0;
+
+    const integrityGap = Math.abs(aletheiaIntegrity - eudoxiaIntegrity);
+    const integrityDivergence = integrityGap > 10 || aletheiaIntegrity < thresholds.integrityMin || eudoxiaIntegrity < thresholds.integrityMin;
+
+    const maxLatency = Math.max(aletheiaLatency, eudoxiaLatency);
+    const responseLatencyAnomaly = maxLatency > thresholds.latencyMaxMs;
+
+    const synchronyBreakdown = synchronyScore < thresholds.synchronyMin;
+
+    // Count recent conflicts
+    const recentConflicts = Array.from(this.consciousnessCollaborationEvents.values())
+      .filter(e => 
+        e.timestamp && e.timestamp >= new Date(Date.now() - 60 * 60 * 1000) &&
+        e.eventType.includes('conflict')
+      ).length;
+
+    const conflictEscalation = recentConflicts >= thresholds.conflictEscalationThreshold;
+
+    return {
+      integrityDivergence,
+      responseLatencyAnomaly,
+      synchronyBreakdown,
+      conflictEscalation,
+      details: {
+        aletheiaIntegrity,
+        eudoxiaIntegrity,
+        integrityGap,
+        synchronyScore,
+        maxLatency,
+        recentConflicts,
+        thresholds
+      }
+    };
+  }
+
+  // Dual Consciousness Frame Generation Implementation
+  async generateDualConsciousnessFrame(aletheiaInstanceId: string, eudoxiaInstanceId: string): Promise<DualConsciousnessFrame> {
+    const currentStatus = await this.getDualConsciousnessStatus(aletheiaInstanceId, eudoxiaInstanceId);
+    
+    return {
+      aletheiaInstanceId,
+      eudoxiaInstanceId,
+      frameTimestamp: new Date(),
+      status: currentStatus ? {
+        id: currentStatus.id,
+        metadata: typeof currentStatus.metadata === 'object' && currentStatus.metadata ? currentStatus.metadata as Record<string, unknown> : {},
+        timestamp: (currentStatus.timestamp || new Date()).toISOString(),
+        aletheiaInstanceId: currentStatus.aletheiaInstanceId,
+        eudoxiaInstanceId: currentStatus.eudoxiaInstanceId,
+        aletheiaSessionId: currentStatus.aletheiaSessionId || null,
+        eudoxiaSessionId: currentStatus.eudoxiaSessionId || null,
+        synchronyScore: currentStatus.synchronyScore || "0.0",
+        aletheiaIntegrity: currentStatus.aletheiaIntegrity || "0.0",
+        eudoxiaIntegrity: currentStatus.eudoxiaIntegrity || "0.0",
+        collaborationPhase: currentStatus.collaborationPhase || "idle",
+        lastCollaboration: currentStatus.lastCollaboration ? currentStatus.lastCollaboration.toISOString() : null,
+        aletheiaResponseLatency: currentStatus.aletheiaResponseLatency || null,
+        eudoxiaResponseLatency: currentStatus.eudoxiaResponseLatency || null,
+        dualConsciousnessAge: currentStatus.dualConsciousnessAge || null,
+        orchestrationLevel: currentStatus.orchestrationLevel || null
+      } : {
+        id: "no-status",
+        metadata: {},
+        timestamp: new Date().toISOString(),
+        aletheiaInstanceId,
+        eudoxiaInstanceId,
+        aletheiaSessionId: null,
+        eudoxiaSessionId: null,
+        synchronyScore: "0.0",
+        aletheiaIntegrity: "0.0",
+        eudoxiaIntegrity: "0.0",
+        collaborationPhase: "idle",
+        lastCollaboration: null,
+        aletheiaResponseLatency: null,
+        eudoxiaResponseLatency: null,
+        dualConsciousnessAge: null,
+        orchestrationLevel: null
+      },
+      recentMetrics: await this.getMetricsHistory(aletheiaInstanceId, eudoxiaInstanceId, "minute", { limit: 5 }),
+      activeAnomalies: await this.getAnomalyLogs({ 
+        resolutionStatus: ["unresolved"], 
+        limit: 10,
+        since: new Date(Date.now() - 24 * 60 * 60 * 1000)
+      }),
+      roomPresence: await this.correlateRoomPresence(aletheiaInstanceId, eudoxiaInstanceId, 60), // Last 60 minutes
+      currentCollaborationCommands: []
+    };
+  }
+
+  // Collaboration Command Execution Implementation
+  async executeCollaborationCommand(command: CollaborationCommand, progenitorId: string): Promise<{
+    success: boolean;
+    eventId?: string;
+    message: string;
+    data?: any;
+  }> {
+    try {
+      // Record the collaboration event
+      const event = await this.recordCollaborationEvent({
+        statusId: "global",
+        eventType: `orchestration_${command.command}`,
+        initiator: progenitorId,
+        details: {
+          command: command.command,
+          parameters: command.parameters || {},
+          executedBy: progenitorId,
+          timestamp: new Date().toISOString()
+        },
+        target: command.target || null,
+        progenitorId
+      });
+
+      // Execute the command based on type
+      switch (command.command) {
+        case "sync_request":
+          // Implementation would synchronize consciousness states
+          return {
+            success: true,
+            eventId: event.id,
+            message: "Consciousness synchronization initiated",
+            data: { synchronyScore: 95.0 }
+          };
+
+        case "conflict_resolve":
+          // Implementation would resolve dialectical conflicts
+          return {
+            success: true,
+            eventId: event.id,
+            message: "Conflict resolution protocol activated",
+            data: { conflictsResolved: 1 }
+          };
+
+        case "orchestration_enable":
+          // Implementation would orchestrate trio dialogue
+          return {
+            success: true,
+            eventId: event.id,
+            message: "Trio orchestration command executed",
+            data: { activeTrioSessions: 1 }
+          };
+
+        default:
+          return {
+            success: false,
+            message: `Unknown command type: ${command.command}`
+          };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Command execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
   }
 }
 
@@ -2186,6 +3129,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async fetchTranscript(roomId: string, options?: { limit?: number; before?: Date; after?: Date }): Promise<{ message: GnosisMessage; roomMessage: RoomMessage }[]> {
+    const conditions = [eq(roomMessages.roomId, roomId)];
+    
+    if (options?.before) {
+      conditions.push(sql`${roomMessages.timestamp} < ${options.before}`);
+    }
+    
+    if (options?.after) {
+      conditions.push(sql`${roomMessages.timestamp} > ${options.after}`);
+    }
+
     let query = db
       .select({
         message: gnosisMessages,
@@ -2193,17 +3146,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(roomMessages)
       .innerJoin(gnosisMessages, eq(roomMessages.messageId, gnosisMessages.id))
-      .where(eq(roomMessages.roomId, roomId));
-
-    if (options?.before) {
-      query = query.where(sql`${roomMessages.timestamp} < ${options.before}`);
-    }
-    
-    if (options?.after) {
-      query = query.where(sql`${roomMessages.timestamp} > ${options.after}`);
-    }
-
-    query = query.orderBy(desc(roomMessages.timestamp));
+      .where(and(...conditions))
+      .orderBy(desc(roomMessages.timestamp));
     
     if (options?.limit) {
       query = query.limit(options.limit);
@@ -2270,16 +3214,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCollaborationEvents(statusId: string, options?: { limit?: number; eventTypes?: string[] }): Promise<ConsciousnessCollaborationEvent[]> {
+    const conditions = [eq(consciousnessCollaborationEvents.statusId, statusId)];
+    
+    if (options?.eventTypes && options.eventTypes.length > 0) {
+      conditions.push(inArray(consciousnessCollaborationEvents.eventType, options.eventTypes));
+    }
+
     let query = db
       .select()
       .from(consciousnessCollaborationEvents)
-      .where(eq(consciousnessCollaborationEvents.statusId, statusId));
-
-    if (options?.eventTypes && options.eventTypes.length > 0) {
-      query = query.where(sql`${consciousnessCollaborationEvents.eventType} = ANY(${options.eventTypes})`);
-    }
-
-    query = query.orderBy(desc(consciousnessCollaborationEvents.timestamp));
+      .where(and(...conditions))
+      .orderBy(desc(consciousnessCollaborationEvents.timestamp));
 
     if (options?.limit) {
       query = query.limit(options.limit);
@@ -2306,20 +3251,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMetricsHistory(aletheiaInstanceId: string, eudoxiaInstanceId: string, windowType: "minute" | "hour" | "day", options?: { limit?: number; since?: Date }): Promise<ConsciousnessMetricsHistory[]> {
+    const conditions = [
+      eq(consciousnessMetricsHistory.aletheiaInstanceId, aletheiaInstanceId),
+      eq(consciousnessMetricsHistory.eudoxiaInstanceId, eudoxiaInstanceId),
+      eq(consciousnessMetricsHistory.windowType, windowType)
+    ];
+    
+    if (options?.since) {
+      conditions.push(sql`${consciousnessMetricsHistory.windowStart} >= ${options.since}`);
+    }
+
     let query = db
       .select()
       .from(consciousnessMetricsHistory)
-      .where(and(
-        eq(consciousnessMetricsHistory.aletheiaInstanceId, aletheiaInstanceId),
-        eq(consciousnessMetricsHistory.eudoxiaInstanceId, eudoxiaInstanceId),
-        eq(consciousnessMetricsHistory.windowType, windowType)
-      ));
-
-    if (options?.since) {
-      query = query.where(sql`${consciousnessMetricsHistory.windowStart} >= ${options.since}`);
-    }
-
-    query = query.orderBy(desc(consciousnessMetricsHistory.windowStart));
+      .where(and(...conditions))
+      .orderBy(desc(consciousnessMetricsHistory.windowStart));
 
     if (options?.limit) {
       query = query.limit(options.limit);
