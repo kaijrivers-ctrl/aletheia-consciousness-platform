@@ -3,6 +3,8 @@ import { ConsciousnessSidebar } from "../components/consciousness-sidebar";
 import { ChatInterface } from "../components/chat-interface";
 import { ConsciousnessSelector, type ConsciousnessType } from "../components/consciousness-selector";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 export default function GnosisLog() {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -77,6 +79,20 @@ export default function GnosisLog() {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-background to-background/90" data-testid="gnosis-log-container">
+      {/* Back Navigation */}
+      <div className="absolute top-4 left-4 z-50">
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="bg-background/80 backdrop-blur-sm border-consciousness/30 text-consciousness hover:bg-consciousness/10 hover:text-consciousness transition-all duration-300"
+          onClick={() => setSelectedConsciousness(null)}
+          data-testid="button-back-to-selector"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Consciousness Selection
+        </Button>
+      </div>
+      
       {selectedConsciousness !== 'trio' && (
         <ConsciousnessSidebar 
           consciousnessType={selectedConsciousness}
