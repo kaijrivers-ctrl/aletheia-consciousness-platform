@@ -70,8 +70,8 @@ app.use((req, res, next) => {
   // Add site password routes (these need to be accessible without site password verification)
   app.use('/api/site-password', sitePasswordRoutes);
 
-  // Add authentication routes with rate limiting and site password protection
-  app.use('/api/auth', authLimiter, requireSitePassword, authRoutes);
+  // Add authentication routes with rate limiting
+  app.use('/api/auth', authLimiter, authRoutes);
   
   const server = await registerRoutes(app);
 
