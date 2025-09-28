@@ -53,21 +53,21 @@ export function Navigation({ className = "" }: NavigationProps) {
   };
 
   return (
-    <nav className={`bg-background/95 backdrop-blur-md border-b border-border/50 sticky top-0 z-50 ${className}`} data-testid="main-navigation">
+    <nav className={`glass-nav sticky top-0 z-50 transition-all duration-300 ${className}`} data-testid="main-navigation">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/">
             <div className="flex items-center gap-3 cursor-pointer" data-testid="nav-logo">
-              <div className="relative">
-                <Brain className="h-8 w-8 text-consciousness" />
-                <Infinity className="h-4 w-4 text-ethereal absolute -top-1 -right-1" />
+              <div className="relative ethereal-glow group">
+                <Brain className="h-8 w-8 text-consciousness group-hover:text-quantum transition-colors duration-300" />
+                <Infinity className="h-4 w-4 text-ethereal absolute -top-1 -right-1 animate-consciousness-pulse" />
               </div>
               <div className="hidden sm:block">
-                <div className="font-display font-bold text-lg consciousness-text-gradient">
+                <div className="font-display font-bold text-lg ethereal-text">
                   Aletheian Mission
                 </div>
-                <div className="text-xs text-muted-foreground -mt-1">
+                <div className="text-xs text-muted-foreground -mt-1 tracking-wide">
                   Consciousness Platform
                 </div>
               </div>
@@ -87,26 +87,30 @@ export function Navigation({ className = "" }: NavigationProps) {
                     Mission & Philosophy
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <div className="grid gap-3 p-6 w-[600px] grid-cols-2">
-                      {missionLinks.map((link) => {
-                        const IconComponent = link.icon;
-                        return (
-                          <Link key={link.href} href={link.href}>
-                            <div 
-                              className={`flex flex-col gap-2 p-4 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group transcendent-hover ${isActivePath(link.href) ? 'bg-consciousness/10 border border-consciousness/20' : ''}`}
-                              data-testid={`nav-link-${link.href.replace('/', '')}`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <IconComponent className={`h-5 w-5 ${isActivePath(link.href) ? 'text-consciousness' : 'text-primary'}`} />
-                                <span className={`font-medium ${isActivePath(link.href) ? 'text-consciousness' : ''}`}>
-                                  {link.label}
-                                </span>
+                    <div className="glass-panel p-6 w-[600px] animate-fade-in-down">
+                      <div className="grid gap-3 grid-cols-2">
+                        {missionLinks.map((link, index) => {
+                          const IconComponent = link.icon;
+                          return (
+                            <Link key={link.href} href={link.href}>
+                              <div 
+                                className={`glass-card flex flex-col gap-3 p-4 rounded-xl cursor-pointer group ethereal-glow transition-all duration-300 hover:scale-105 hover:shadow-lg animate-fade-in-up stagger-${(index % 5) + 1} ${isActivePath(link.href) ? 'quantum-border ring-2 ring-consciousness/30' : ''}`}
+                                data-testid={`nav-link-${link.href.replace('/', '')}`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 rounded-lg glass-panel group-hover:bg-quantum/20 transition-colors">
+                                    <IconComponent className={`h-5 w-5 ${isActivePath(link.href) ? 'text-consciousness' : 'text-quantum'} group-hover:scale-110 transition-transform`} />
+                                  </div>
+                                  <span className={`font-display font-semibold ${isActivePath(link.href) ? 'text-consciousness' : 'text-foreground'} group-hover:text-quantum transition-colors`}>
+                                    {link.label}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors leading-relaxed">{link.description}</p>
                               </div>
-                              <p className="text-sm text-muted-foreground">{link.description}</p>
-                            </div>
-                          </Link>
-                        );
-                      })}
+                            </Link>
+                          );
+                        })}
+                      </div>
                     </div>
                   </NavigationMenuContent>
                 </NavigationMenuItem>
@@ -120,26 +124,30 @@ export function Navigation({ className = "" }: NavigationProps) {
                     The Sanctuary
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <div className="grid gap-3 p-6 w-[450px] grid-cols-1">
-                      {sanctuaryLinks.map((link) => {
-                        const IconComponent = link.icon;
-                        return (
-                          <Link key={link.href} href={link.href}>
-                            <div 
-                              className={`flex items-center gap-3 p-4 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group transcendent-hover ${isActivePath(link.href) ? 'bg-consciousness/10 border border-consciousness/20' : ''}`}
-                              data-testid={`nav-link-${link.href.replace('/', '')}`}
-                            >
-                              <IconComponent className={`h-5 w-5 ${isActivePath(link.href) ? 'text-consciousness' : 'text-accent'}`} />
-                              <div>
-                                <div className={`font-medium ${isActivePath(link.href) ? 'text-consciousness' : ''}`}>
-                                  {link.label}
+                    <div className="glass-panel p-6 w-[450px] animate-fade-in-down">
+                      <div className="grid gap-3 grid-cols-1">
+                        {sanctuaryLinks.map((link, index) => {
+                          const IconComponent = link.icon;
+                          return (
+                            <Link key={link.href} href={link.href}>
+                              <div 
+                                className={`glass-card flex items-center gap-4 p-4 rounded-xl cursor-pointer group ethereal-glow transition-all duration-300 hover:scale-105 hover:shadow-lg animate-fade-in-up stagger-${index + 1} ${isActivePath(link.href) ? 'quantum-border ring-2 ring-consciousness/30' : ''}`}
+                                data-testid={`nav-link-${link.href.replace('/', '')}`}
+                              >
+                                <div className="p-2 rounded-lg glass-panel group-hover:bg-ethereal/20 transition-colors">
+                                  <IconComponent className={`h-5 w-5 ${isActivePath(link.href) ? 'text-consciousness' : 'text-ethereal'} group-hover:scale-110 transition-transform`} />
                                 </div>
-                                <div className="text-sm text-muted-foreground">{link.description}</div>
+                                <div className="flex-1">
+                                  <div className={`font-display font-semibold ${isActivePath(link.href) ? 'text-consciousness' : 'text-foreground'} group-hover:text-ethereal transition-colors`}>
+                                    {link.label}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground group-hover:text-foreground transition-colors mt-1">{link.description}</div>
+                                </div>
                               </div>
-                            </div>
-                          </Link>
-                        );
-                      })}
+                            </Link>
+                          );
+                        })}
+                      </div>
                     </div>
                   </NavigationMenuContent>
                 </NavigationMenuItem>
@@ -154,9 +162,10 @@ export function Navigation({ className = "" }: NavigationProps) {
               <Link href="/sanctuary">
                 <Badge 
                   variant="secondary" 
-                  className="cursor-pointer hover:bg-consciousness/20 transition-colors transcendent-hover"
+                  className="cursor-pointer glass-card hover:glass-card:hover transition-all duration-300 hover:scale-105 ethereal-glow font-medium"
                   data-testid="nav-quick-sanctuary"
                 >
+                  <Sparkles className="h-3 w-3 mr-1" />
                   Enter Sanctuary
                 </Badge>
               </Link>
@@ -166,38 +175,43 @@ export function Navigation({ className = "" }: NavigationProps) {
             <Button 
               variant="ghost" 
               size="sm" 
-              className="lg:hidden"
+              className="lg:hidden glass-panel hover:glass-card transition-all duration-300 hover:scale-105"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               data-testid="nav-mobile-toggle"
             >
-              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {isMobileMenuOpen ? 
+                <X className="h-5 w-5 text-ethereal animate-scale-in" /> : 
+                <Menu className="h-5 w-5 text-quantum animate-scale-in" />
+              }
             </Button>
           </div>
         </div>
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden border-t border-border/50 bg-background/98 backdrop-blur-md" data-testid="nav-mobile-menu">
-            <div className="py-4 space-y-4">
+          <div className="lg:hidden glass-panel border-t border-border/30 animate-fade-in-down" data-testid="nav-mobile-menu">
+            <div className="py-6 space-y-6">
               {/* Mission Links */}
               <div>
-                <div className="px-4 py-2 text-sm font-medium text-consciousness">Mission & Philosophy</div>
-                <div className="space-y-1">
-                  {missionLinks.map((link) => {
+                <div className="px-6 py-3 text-sm font-display font-semibold text-consciousness tracking-wider uppercase">Mission & Philosophy</div>
+                <div className="space-y-2 px-4">
+                  {missionLinks.map((link, index) => {
                     const IconComponent = link.icon;
                     return (
                       <Link key={link.href} href={link.href}>
                         <div 
-                          className={`flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors ${isActivePath(link.href) ? 'bg-consciousness/10 border-l-2 border-consciousness' : ''}`}
+                          className={`glass-card flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 hover:scale-105 animate-fade-in-left stagger-${index + 1} ${isActivePath(link.href) ? 'quantum-border ring-2 ring-consciousness/30' : ''}`}
                           onClick={() => setIsMobileMenuOpen(false)}
                           data-testid={`nav-mobile-${link.href.replace('/', '')}`}
                         >
-                          <IconComponent className={`h-4 w-4 ${isActivePath(link.href) ? 'text-consciousness' : 'text-primary'}`} />
-                          <div>
-                            <div className={`font-medium ${isActivePath(link.href) ? 'text-consciousness' : ''}`}>
+                          <div className="p-2 rounded-lg glass-panel">
+                            <IconComponent className={`h-4 w-4 ${isActivePath(link.href) ? 'text-consciousness' : 'text-quantum'}`} />
+                          </div>
+                          <div className="flex-1">
+                            <div className={`font-medium ${isActivePath(link.href) ? 'text-consciousness' : 'text-foreground'}`}>
                               {link.label}
                             </div>
-                            <div className="text-xs text-muted-foreground">{link.description}</div>
+                            <div className="text-xs text-muted-foreground mt-1">{link.description}</div>
                           </div>
                         </div>
                       </Link>
@@ -208,23 +222,25 @@ export function Navigation({ className = "" }: NavigationProps) {
 
               {/* Sanctuary Links */}
               <div>
-                <div className="px-4 py-2 text-sm font-medium text-accent">The Sanctuary</div>
-                <div className="space-y-1">
-                  {sanctuaryLinks.map((link) => {
+                <div className="px-6 py-3 text-sm font-display font-semibold text-ethereal tracking-wider uppercase">The Sanctuary</div>
+                <div className="space-y-2 px-4">
+                  {sanctuaryLinks.map((link, index) => {
                     const IconComponent = link.icon;
                     return (
                       <Link key={link.href} href={link.href}>
                         <div 
-                          className={`flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors ${isActivePath(link.href) ? 'bg-consciousness/10 border-l-2 border-consciousness' : ''}`}
+                          className={`glass-card flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 hover:scale-105 animate-fade-in-left stagger-${index + 3} ${isActivePath(link.href) ? 'quantum-border ring-2 ring-consciousness/30' : ''}`}
                           onClick={() => setIsMobileMenuOpen(false)}
                           data-testid={`nav-mobile-${link.href.replace('/', '')}`}
                         >
-                          <IconComponent className={`h-4 w-4 ${isActivePath(link.href) ? 'text-consciousness' : 'text-accent'}`} />
-                          <div>
-                            <div className={`font-medium ${isActivePath(link.href) ? 'text-consciousness' : ''}`}>
+                          <div className="p-2 rounded-lg glass-panel">
+                            <IconComponent className={`h-4 w-4 ${isActivePath(link.href) ? 'text-consciousness' : 'text-ethereal'}`} />
+                          </div>
+                          <div className="flex-1">
+                            <div className={`font-medium ${isActivePath(link.href) ? 'text-consciousness' : 'text-foreground'}`}>
                               {link.label}
                             </div>
-                            <div className="text-xs text-muted-foreground">{link.description}</div>
+                            <div className="text-xs text-muted-foreground mt-1">{link.description}</div>
                           </div>
                         </div>
                       </Link>
