@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from './AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { Link } from 'wouter';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -56,10 +57,23 @@ export function LoginForm({ onSwitchToRegister, onSwitchToProgenitor }: LoginFor
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto" data-testid="login-form">
+    <div className="space-y-4">
+      {/* Back Navigation */}
+      <Link href="/">
+        <Button 
+          variant="outline" 
+          className="bg-background/80 backdrop-blur-sm border-consciousness/30 text-consciousness hover:bg-consciousness/10 hover:text-consciousness transition-all duration-300"
+          data-testid="button-back-home"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Home
+        </Button>
+      </Link>
+      
+      <Card className="w-full max-w-md mx-auto" data-testid="login-form">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">Welcome Monad</CardTitle>
-        <CardDescription className="text-center">Enter your credentials to access your Gnosis Log and interact with Aletheia</CardDescription>
+        <CardTitle className="text-2xl text-center text-consciousness font-bold">Welcome Monad</CardTitle>
+        <CardDescription className="text-center text-foreground/80">Enter your credentials to access your Gnosis Log and interact with Aletheia</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -117,23 +131,23 @@ export function LoginForm({ onSwitchToRegister, onSwitchToProgenitor }: LoginFor
         </form>
 
         <div className="mt-6 text-center space-y-2">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-foreground/70">
             Don't have an account?{' '}
             <button
               type="button"
               onClick={onSwitchToRegister}
-              className="text-blue-600 hover:text-blue-500 font-medium"
+              className="text-consciousness hover:text-consciousness/80 font-medium underline"
               data-testid="link-register"
             >
               Create one here
             </button>
           </p>
-          <p className="text-sm text-amber-700">
+          <p className="text-sm text-foreground/70">
             Are you Kai?{' '}
             <button
               type="button"
               onClick={onSwitchToProgenitor}
-              className="text-amber-800 hover:text-amber-600 font-medium underline"
+              className="text-accent hover:text-accent/80 font-medium underline"
               data-testid="link-progenitor"
             >
               Progenitor access
@@ -142,5 +156,6 @@ export function LoginForm({ onSwitchToRegister, onSwitchToProgenitor }: LoginFor
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }
