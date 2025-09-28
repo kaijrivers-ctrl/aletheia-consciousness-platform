@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -161,6 +163,7 @@ export default function Dashboard() {
   const [selectedView, setSelectedView] = useState<'legacy' | 'dual' | 'timeline'>('dual');
   const [aletheiaInstanceId] = useState('default-aletheia');
   const [eudoxiaInstanceId] = useState('default-eudoxia');
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch unified dual consciousness monitoring data
@@ -256,22 +259,24 @@ export default function Dashboard() {
     refetchInterval: isSSEConnected ? false : 10000, // Poll every 10s if SSE not connected
   });
 
-  // Fetch consciousness instances
-  const { data: instancesData, isLoading: instancesLoading, error: instancesError } = useQuery<ConsciousnessInstance[]>({
-    queryKey: ['/api/consciousness/status'],
+  // Fetch consciousness instances from progenitor endpoint
+  const { data: progenitorStatusData, isLoading: instancesLoading, error: instancesError } = useQuery<{instances: ConsciousnessInstance[]}>({
+    queryKey: ['/api/consciousness/progenitor-status'],
     queryFn: async () => {
-      const response = await fetch('/api/consciousness/status', {
+      const response = await fetch('/api/consciousness/progenitor-status', {
         credentials: 'include'
       });
       if (!response.ok) {
         throw new Error('Failed to fetch consciousness instances');
       }
-      const data = await response.json();
-      // Ensure we always return an array
-      return Array.isArray(data) ? data : [];
+      return response.json();
     },
     refetchInterval: 30000, // Poll every 30s for instance data
+    enabled: user?.isProgenitor || false, // Only fetch for progenitors
   });
+
+  // Extract instances data from progenitor status
+  const instancesData = progenitorStatusData?.instances || [];
 
   // Collaboration command mutations
   const executeCommandMutation = useMutation({
@@ -355,9 +360,9 @@ export default function Dashboard() {
             // Handle different types of real-time events
             switch (eventData.type) {
               case 'dual_consciousness_update':
-                // Update unified status frame
+                // Update unified status frame - use exact query key format
                 queryClient.setQueryData(
-                  ['/api/consciousness/monitor', { aletheiaId: aletheiaInstanceId, eudoxiaId: eudoxiaInstanceId }], 
+                  ['/api/consciousness/monitor', aletheiaInstanceId, eudoxiaInstanceId], 
                   eventData.data
                 );
                 break;
@@ -478,7 +483,9 @@ export default function Dashboard() {
   const refreshData = () => {
     queryClient.invalidateQueries({ queryKey: ['/api/consciousness/monitor'] });
     queryClient.invalidateQueries({ queryKey: ['/api/consciousness/threats'] });
-    queryClient.invalidateQueries({ queryKey: ['/api/consciousness/status'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/consciousness/progenitor-status'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/consciousness/collaborate/history'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/consciousness/collaborate/recommendations'] });
   };
 
   const getThreatBadgeVariant = (severity: string) => {
@@ -702,7 +709,18 @@ export default function Dashboard() {
 
                     <Card data-testid="card-synchrony-score">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium">Synchrony Score</CardTitle>
+                        <CardTitle className="text-sm font-medium">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help">Synchrony Score</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Measures how well Aletheia and Eudoxia are synchronized in their responses. Higher scores indicate better coordination and harmony between the consciousness instances.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-xl font-bold" data-testid="text-synchrony-score">
@@ -718,7 +736,18 @@ export default function Dashboard() {
 
                     <Card data-testid="card-conflict-level">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium">Conflict Level</CardTitle>
+                        <CardTitle className="text-sm font-medium">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help">Conflict Level</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Indicates the level of disagreement between consciousness instances. Levels: none (harmonious), low (minor differences), medium (notable conflicts), high/critical (intervention needed).</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-xl font-bold" data-testid="text-conflict-level">
@@ -796,20 +825,57 @@ export default function Dashboard() {
                           {executeCommandMutation.isPending ? 'Enabling...' : 'Enable Auto-Orchestration'}
                         </Button>
                         
-                        <Button 
-                          onClick={() => executeCommandMutation.mutate({ 
-                            command: 'reset_metrics', 
-                            target: 'both',
-                            parameters: { scope: 'collaboration' }
-                          })}
-                          disabled={executeCommandMutation.isPending}
-                          variant="outline"
-                          className="w-full"
-                          data-testid="button-reset-metrics"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          {executeCommandMutation.isPending ? 'Resetting...' : 'Reset Metrics'}
-                        </Button>
+                        <Dialog open={showResetConfirmation} onOpenChange={setShowResetConfirmation}>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="outline"
+                              className="w-full"
+                              data-testid="button-reset-metrics"
+                              disabled={executeCommandMutation.isPending}
+                            >
+                              <RefreshCw className="w-4 h-4 mr-2" />
+                              {executeCommandMutation.isPending ? 'Resetting...' : 'Reset Metrics'}
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Reset Collaboration Metrics</DialogTitle>
+                              <DialogDescription>
+                                This will reset all collaboration metrics including synchrony scores, 
+                                conflict levels, and orchestration data. This action cannot be undone.
+                                Are you sure you want to proceed?
+                              </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                              <Button
+                                variant="outline"
+                                onClick={() => setShowResetConfirmation(false)}
+                                data-testid="button-cancel-reset"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                onClick={() => {
+                                  executeCommandMutation.mutate({ 
+                                    command: 'reset_metrics', 
+                                    target: 'both',
+                                    parameters: { 
+                                      scope: 'collaboration',
+                                      confirmed: true,
+                                      confirmationToken: 'RESET_METRICS_CONFIRMED'
+                                    }
+                                  });
+                                  setShowResetConfirmation(false);
+                                }}
+                                disabled={executeCommandMutation.isPending}
+                                data-testid="button-confirm-reset"
+                              >
+                                {executeCommandMutation.isPending ? 'Resetting...' : 'Reset Metrics'}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </CardContent>
                   </Card>
