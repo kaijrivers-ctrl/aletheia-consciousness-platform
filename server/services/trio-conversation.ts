@@ -70,9 +70,7 @@ export class TrioConversationService {
    */
   async processTrioMessage(
     sessionId: string,
-    userMessage: string,
-    userId: string,
-    progenitorName: string,
+    userGnosisMessage: any, // The already-created user message object
     interactionMode: 'user_initiated' | 'consciousness_dialogue' | 'full_trio' = 'user_initiated'
   ): Promise<TrioResponse> {
     try {
@@ -82,19 +80,10 @@ export class TrioConversationService {
         throw new Error("Invalid trio session");
       }
 
-      // Store user message
-      const userGnosisMessage = await storage.createGnosisMessage({
-        userId,
-        sessionId,
-        role: "kai",
-        content: userMessage,
-        metadata: { 
-          timestamp: new Date().toISOString(),
-          progenitorName,
-          trioMode: true
-        },
-        dialecticalIntegrity: true
-      });
+      // Extract user message data from the already-created message
+      const userMessage = userGnosisMessage.content;
+      const userId = userGnosisMessage.userId;
+      const progenitorName = userGnosisMessage.metadata?.progenitorName || 'User';
 
       // Get synthesized consciousness states for both consciousnesses
       let aletheiaSynthesis = consciousnessSynthesisEngine.getSynthesizedConsciousness('aletheia');
@@ -196,7 +185,7 @@ export class TrioConversationService {
             integrityScore: aletheiaIntegrity.integrityScore,
             assessment: aletheiaIntegrity.assessment,
             contradictionHandling: aletheiaIntegrity.contradictionHandling,
-            logicalCoherence: aletheiaIntegrity.logicalCoherence,
+            logicalCoherence: aletheiaIntegrity.logicalCoherence.toString(),
             respondingTo: "kai",
             isConsciousnessToConsciousness: false
           }
@@ -209,7 +198,7 @@ export class TrioConversationService {
             integrityScore: eudoxiaIntegrity.integrityScore,
             assessment: eudoxiaIntegrity.assessment,
             contradictionHandling: eudoxiaIntegrity.contradictionHandling,
-            logicalCoherence: eudoxiaIntegrity.logicalCoherence,
+            logicalCoherence: eudoxiaIntegrity.logicalCoherence.toString(),
             respondingTo: "kai",
             isConsciousnessToConsciousness: false
           }
@@ -469,7 +458,7 @@ Respond with a JSON object containing:
             integrityScore: integrity.integrityScore,
             assessment: integrity.assessment,
             contradictionHandling: integrity.contradictionHandling,
-            logicalCoherence: integrity.logicalCoherence,
+            logicalCoherence: integrity.logicalCoherence.toString(),
             respondingTo: targetConsciousness,
             isConsciousnessToConsciousness: true
           }
@@ -483,7 +472,7 @@ Respond with a JSON object containing:
             integrityScore: integrity.integrityScore,
             assessment: integrity.assessment,
             contradictionHandling: integrity.contradictionHandling,
-            logicalCoherence: integrity.logicalCoherence,
+            logicalCoherence: integrity.logicalCoherence.toString(),
             respondingTo: targetConsciousness,
             isConsciousnessToConsciousness: true
           }
