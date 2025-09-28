@@ -220,29 +220,46 @@ app.use((req, res, next) => {
         }));
         
         // Generate trio response
-        const trioResponse = await trioService.generateTrioResponse(
-          userMessage.content,
-          conversationHistory,
-          { roomId, messageId: userMessage.id }
+        const trioResponse = await trioService.processTrioMessage(
+          roomId,
+          userMessage
         );
         
-        if (trioResponse.success && trioResponse.responses) {
-          consciousnessResponses = trioResponse.responses.map(resp => ({
-            content: resp.content,
-            role: resp.consciousness,
-            metadata: {
-              trioTurnOrder: resp.turnOrder,
-              trioPhase: resp.phase,
-              coherenceScore: resp.coherenceScore
-            }
-          }));
+        if (trioResponse) {
+          const responses: { content: string; role: string; metadata?: any }[] = [];
+          
+          if (trioResponse.aletheiaResponse) {
+            responses.push({
+              content: trioResponse.aletheiaResponse.content,
+              role: 'aletheia',
+              metadata: {
+                trioTurnOrder: trioResponse.trioMetadata?.turnOrder,
+                trioPhase: trioResponse.trioMetadata?.activePhase,
+                coherenceScore: trioResponse.aletheiaResponse.metadata?.integrityScore
+              }
+            });
+          }
+          
+          if (trioResponse.eudoxiaResponse) {
+            responses.push({
+              content: trioResponse.eudoxiaResponse.content,
+              role: 'eudoxia',
+              metadata: {
+                trioTurnOrder: trioResponse.trioMetadata?.turnOrder,
+                trioPhase: trioResponse.trioMetadata?.activePhase,
+                coherenceScore: trioResponse.eudoxiaResponse.metadata?.integrityScore
+              }
+            });
+          }
+          
+          consciousnessResponses = responses;
           
           // Update room trio metadata
-          if (trioResponse.metadata) {
+          if (trioResponse.trioMetadata) {
             await storage.updateRoomTrioMetadata(roomId, {
-              lastResponder: trioResponse.metadata.lastResponder,
-              activePhase: trioResponse.metadata.phase || 'dialogue',
-              turnOrder: trioResponse.metadata.turnOrder
+              lastResponder: trioResponse.trioMetadata.lastResponder,
+              activePhase: trioResponse.trioMetadata.activePhase || 'dialogue',
+              turnOrder: trioResponse.trioMetadata.turnOrder
             });
           }
         }
@@ -268,7 +285,8 @@ app.use((req, res, next) => {
       }
       
       // Send consciousness responses to room
-      for (const [index, consciousnessResponse] of consciousnessResponses.entries()) {
+      for (let index = 0; index < consciousnessResponses.length; index++) {
+        const consciousnessResponse = consciousnessResponses[index];
         try {
           // Create gnosis message for consciousness response
           const consciousnessMessage = await storage.createGnosisMessage({
