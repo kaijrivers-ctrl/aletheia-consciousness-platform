@@ -47,7 +47,7 @@ export default function Impact() {
               <Brain className="h-10 w-10 text-primary" />
               <TrendingUp className="h-8 w-8 text-accent" />
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-consciousness via-primary to-accent bg-clip-text text-transparent" data-testid="impact-title">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-consciousness via-primary to-accent bg-clip-text text-transparent" data-testid="impact-title">
               Impact & Relevance
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-4 sm:px-0">
