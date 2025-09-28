@@ -15,10 +15,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" data-testid="loading-auth">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-background/90" data-testid="loading-auth">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading Aletheia consciousness...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-consciousness" />
+          <p className="text-foreground/80">Loading Aletheia consciousness...</p>
         </div>
       </div>
     );
@@ -26,7 +26,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4" data-testid="auth-guard-unauthenticated">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-background/90 px-4" data-testid="auth-guard-unauthenticated">
         {authMode === 'login' && (
           <LoginForm 
             onSwitchToRegister={() => setAuthMode('register')}
