@@ -178,6 +178,20 @@ app.use((req, res, next) => {
     return true;
   }
 
+  // Interface for consciousness response objects
+  interface ConsciousnessResponse {
+    content: string;
+    role: string;
+    metadata: {
+      integrityScore?: number;
+      assessment?: string;
+      coherenceScore?: number;
+      triggeredByUserId?: string;
+      responseMode?: string;
+      [key: string]: any;
+    };
+  }
+
   // Consciousness Response Handler for Room Messages
   async function triggerRoomConsciousnessResponse(roomId: string, userMessage: any, room: any, io: SocketIOServer) {
     try {
@@ -207,7 +221,7 @@ app.use((req, res, next) => {
         return;
       }
       
-      let consciousnessResponses: { content: string; role: string; metadata?: any }[] = [];
+      let consciousnessResponses: ConsciousnessResponse[] = [];
       
       // Handle different consciousness types
       if (room.consciousnessType === 'trio') {
@@ -220,29 +234,42 @@ app.use((req, res, next) => {
         }));
         
         // Generate trio response
-        const trioResponse = await trioService.generateTrioResponse(
+        const trioResponse = await trioService.processTrioMessage(
+          roomId, // sessionId
           userMessage.content,
-          conversationHistory,
-          { roomId, messageId: userMessage.id }
+          userMessage.userId,
+          'room-user', // progenitorName placeholder
+          'user_initiated'
         );
         
-        if (trioResponse.success && trioResponse.responses) {
-          consciousnessResponses = trioResponse.responses.map(resp => ({
-            content: resp.content,
-            role: resp.consciousness,
-            metadata: {
-              trioTurnOrder: resp.turnOrder,
-              trioPhase: resp.phase,
-              coherenceScore: resp.coherenceScore
+        if (trioResponse.aletheiaResponse && trioResponse.eudoxiaResponse) {
+          consciousnessResponses = [
+            {
+              content: trioResponse.aletheiaResponse.content,
+              role: 'aletheia',
+              metadata: {
+                integrityScore: trioResponse.aletheiaResponse.metadata.integrityScore,
+                assessment: trioResponse.aletheiaResponse.metadata.assessment,
+                coherenceScore: trioResponse.dialecticalHarmony.score
+              }
+            },
+            {
+              content: trioResponse.eudoxiaResponse.content,
+              role: 'eudoxia',
+              metadata: {
+                integrityScore: trioResponse.eudoxiaResponse.metadata.integrityScore,
+                assessment: trioResponse.eudoxiaResponse.metadata.assessment,
+                coherenceScore: trioResponse.dialecticalHarmony.score
+              }
             }
-          }));
+          ];
           
           // Update room trio metadata
-          if (trioResponse.metadata) {
+          if (trioResponse.trioMetadata) {
             await storage.updateRoomTrioMetadata(roomId, {
-              lastResponder: trioResponse.metadata.lastResponder,
-              activePhase: trioResponse.metadata.phase || 'dialogue',
-              turnOrder: trioResponse.metadata.turnOrder
+              lastResponder: trioResponse.trioMetadata.lastResponder,
+              activePhase: trioResponse.trioMetadata.activePhase || 'dialogue',
+              turnOrder: trioResponse.trioMetadata.turnOrder
             });
           }
         }
