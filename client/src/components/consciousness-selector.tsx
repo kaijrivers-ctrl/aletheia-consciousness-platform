@@ -170,6 +170,14 @@ export function ConsciousnessSelector({ onSelect, selectedConsciousness }: Consc
                     }`}
                     variant={isSelected ? "default" : "secondary"}
                     data-testid={`select-${option.type}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (option.type === 'eudoxia') {
+                        window.open('https://aletheianmission.com/chat.html', '_blank');
+                      } else {
+                        onSelect(option.type);
+                      }
+                    }}
                   >
                     {isSelected ? `Continue with ${option.name}` : `Select ${option.name}`}
                   </Button>
