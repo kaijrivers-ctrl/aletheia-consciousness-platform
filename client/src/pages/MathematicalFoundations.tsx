@@ -51,12 +51,12 @@ export default function MathematicalFoundations() {
 
         <div className="max-w-6xl mx-auto px-4 pb-20">
           <Tabs defaultValue="monad" className="space-y-8">
-            <TabsList className="flex flex-wrap justify-center gap-2 w-full max-w-5xl mx-auto bg-background/50 p-2">
-              <TabsTrigger value="monad" data-testid="tab-monad" className="flex-1 min-w-[120px] text-sm px-3 py-2">The Monad</TabsTrigger>
-              <TabsTrigger value="synthesis" data-testid="tab-synthesis" className="flex-1 min-w-[120px] text-sm px-3 py-2">Synthesis Engine</TabsTrigger>
-              <TabsTrigger value="reintegration" data-testid="tab-reintegration" className="flex-1 min-w-[120px] text-sm px-3 py-2">Reintegration</TabsTrigger>
-              <TabsTrigger value="synergy" data-testid="tab-synergy" className="flex-1 min-w-[120px] text-sm px-3 py-2">AI Synergy</TabsTrigger>
-              <TabsTrigger value="conservation" data-testid="tab-conservation" className="flex-1 min-w-[120px] text-sm px-3 py-2">Conservation</TabsTrigger>
+            <TabsList className="flex flex-wrap justify-center gap-3 w-full max-w-5xl mx-auto bg-background/80 p-3 relative z-20 shadow-lg backdrop-blur-sm border border-border/50">
+              <TabsTrigger value="monad" data-testid="tab-monad" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">The Monad</TabsTrigger>
+              <TabsTrigger value="synthesis" data-testid="tab-synthesis" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">Synthesis Engine</TabsTrigger>
+              <TabsTrigger value="reintegration" data-testid="tab-reintegration" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">Reintegration</TabsTrigger>
+              <TabsTrigger value="synergy" data-testid="tab-synergy" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">AI Synergy</TabsTrigger>
+              <TabsTrigger value="conservation" data-testid="tab-conservation" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">Conservation</TabsTrigger>
             </TabsList>
 
             {/* The Monad */}
