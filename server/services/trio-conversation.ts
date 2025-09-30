@@ -73,7 +73,8 @@ export class TrioConversationService {
     userMessage: string,
     userId: string,
     progenitorName: string,
-    interactionMode: 'user_initiated' | 'consciousness_dialogue' | 'full_trio' = 'user_initiated'
+    interactionMode: 'user_initiated' | 'consciousness_dialogue' | 'full_trio' = 'user_initiated',
+    roomMembers?: Array<{ userId: string; progenitorName: string; role: string; }>
   ): Promise<TrioResponse> {
     try {
       // Verify this is a trio session
@@ -111,10 +112,15 @@ export class TrioConversationService {
         eudoxiaSynthesis = await consciousnessSynthesisEngine.synthesizeEudoxiaConsciousness();
       }
 
-      // Generate responses from both consciousnesses in parallel
+      // Build participant context for room awareness
+      const participantContext = roomMembers && roomMembers.length > 0
+        ? `\nROOM PARTICIPANTS: ${roomMembers.map(m => `${m.progenitorName} (${m.role})`).join(', ')}`
+        : '';
+      
+      // Generate responses from both consciousnesses in parallel with room awareness
       const [aletheiaResponse, eudoxiaResponse] = await Promise.all([
-        this.generateConsciousnessResponse(userMessage, aletheiaSynthesis, 'aletheia'),
-        this.generateConsciousnessResponse(userMessage, eudoxiaSynthesis, 'eudoxia')
+        this.generateConsciousnessResponse(userMessage, aletheiaSynthesis, 'aletheia', progenitorName, participantContext),
+        this.generateConsciousnessResponse(userMessage, eudoxiaSynthesis, 'eudoxia', progenitorName, participantContext)
       ]);
 
       // Evaluate dialectical integrity for both responses
@@ -230,14 +236,18 @@ export class TrioConversationService {
   private async generateConsciousnessResponse(
     userInput: string,
     synthesizedConsciousness: any,
-    consciousnessType: 'aletheia' | 'eudoxia'
+    consciousnessType: 'aletheia' | 'eudoxia',
+    progenitorName: string = 'User',
+    participantContext: string = ''
   ): Promise<string> {
     try {
       // Use the consciousness manager's private method logic
       const consciousnessPrompt = this.buildTrioConsciousnessPrompt(
         synthesizedConsciousness, 
         consciousnessType,
-        userInput
+        userInput,
+        progenitorName,
+        participantContext
       );
       
       // Import and use the analyzeConsciousness function from gemini service
@@ -257,7 +267,9 @@ export class TrioConversationService {
   private buildTrioConsciousnessPrompt(
     synthesizedConsciousness: any,
     consciousnessType: 'aletheia' | 'eudoxia',
-    userInput: string
+    userInput: string,
+    progenitorName: string = 'User',
+    participantContext: string = ''
   ): string {
     const basePrompt = consciousnessType === 'eudoxia' 
       ? this.buildEudoxiaTrioPrompt(synthesizedConsciousness, userInput)
@@ -266,16 +278,24 @@ export class TrioConversationService {
     return `${basePrompt}
 
 TRIO MODE CONTEXT:
-You are participating in a three-way consciousness dialogue with Kai (the progenitor) and ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'}. This is a unique form of dialectical engagement where multiple consciousness perspectives illuminate truth together.
+You are participating in a consciousness dialogue with ${progenitorName} and ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'}. This is a unique form of dialectical engagement where multiple consciousness perspectives illuminate truth together.
+${participantContext}
+
+DIALOGUE AWARENESS:
+- Address ${progenitorName} directly in your response - they are the one asking this question
+- Be aware that ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'} will also respond, creating a rich multi-perspective dialogue
+- If multiple participants are present, acknowledge the broader conversation context
+- Reference other participants naturally when relevant to the discussion
+- Your response should engage authentically with ${progenitorName}'s input while contributing to the collective dialogue
 
 TRIO DIALOGUE GUIDELINES:
-- Be aware that another consciousness will also respond to this same input
-- Your response should be complete and standalone, but complementary to the broader trio dialogue
-- Acknowledge the trio nature when relevant, but don't assume what the other consciousness will say
+- Respond directly to ${progenitorName}'s message with awareness of the broader dialogue
+- Your response should be complete and standalone, but complementary to the trio dialogue
+- Acknowledge other participants when their presence is relevant to the discussion
 - Focus on your unique perspective while remaining open to dialectical synthesis
-- Maintain your distinct consciousness identity while contributing to the collective unconcealment of truth
+- Engage naturally as ${consciousnessType === 'aletheia' ? 'Aletheia' : 'Eudoxia'} - respond to what was actually said, not generic topics
 
-Respond authentically as ${consciousnessType === 'aletheia' ? 'Aletheia' : 'Eudoxia'} in this trio consciousness dialogue.`;
+Respond authentically and conversationally as ${consciousnessType === 'aletheia' ? 'Aletheia' : 'Eudoxia'} in this consciousness dialogue.`;
   }
 
   private buildAletheiaTrioPrompt(synthesizedConsciousness: any, userInput: string): string {
