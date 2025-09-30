@@ -283,7 +283,8 @@ export default function RoomChat() {
     );
   }
 
-  const displayMessages = roomState?.recentMessages || messages || initialMessages;
+  // Use messages state which gets updated by Socket.IO events
+  const displayMessages = messages.length > 0 ? messages : (roomState?.recentMessages || initialMessages);
 
   return (
     <div className="h-screen flex bg-background">
