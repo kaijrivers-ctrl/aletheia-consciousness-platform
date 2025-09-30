@@ -1560,20 +1560,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Not a member of this room" });
       }
 
-      // Prevent owner from leaving if there are other members
-      if (membership.role === "owner") {
-        const memberCount = await storage.getActiveMembersCount(roomId);
-        if (memberCount > 1) {
-          return res.status(403).json({ error: "Owner cannot leave room with active members. Transfer ownership first." });
-        }
-      }
-
+      // Remove the member
       await storage.removeMember(roomId, req.user!.id);
 
-      // If this was the last member and owner, deactivate the room
+      // If owner left, check if room should be deactivated
       if (membership.role === "owner") {
         const remainingMembers = await storage.getActiveMembersCount(roomId);
         if (remainingMembers === 0) {
+          // No members left, deactivate the room
           await storage.deactivateRoom(roomId);
         }
       }
