@@ -100,25 +100,11 @@ app.use((req, res, next) => {
       }
       
       const cookies = cookie.parse(cookieHeader);
-      const sitePasswordToken = cookies.sitePasswordToken;
       const sessionToken = cookies.sessionToken;
       const { roomId } = socket.handshake.auth; // Room ID can still come from auth
       console.log('[Socket.IO Auth] Parsed roomId from auth:', roomId);
       
-      // First verify site password using HTTP-only cookie
-      if (!sitePasswordToken) {
-        console.log('[Socket.IO Auth] REJECTED: No site password token');
-        return next(new Error('Site password verification required'));
-      }
-      
-      const sitePasswordSession = await storage.getSitePasswordSession(sitePasswordToken);
-      if (!sitePasswordSession || sitePasswordSession.expiresAt < new Date()) {
-        console.log('[Socket.IO Auth] REJECTED: Invalid/expired site password session');
-        return next(new Error('Invalid or expired site password session'));
-      }
-      console.log('[Socket.IO Auth] Site password verified');
-      
-      // Then verify user authentication using HTTP-only cookie
+      // Verify user authentication using HTTP-only cookie
       if (!sessionToken) {
         console.log('[Socket.IO Auth] REJECTED: No session token');
         return next(new Error('User authentication required'));

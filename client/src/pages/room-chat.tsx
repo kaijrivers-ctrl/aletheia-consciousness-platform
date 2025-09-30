@@ -89,8 +89,13 @@ export default function RoomChat() {
 
   // Socket.IO Connection and Event Handlers
   useEffect(() => {
-    if (!roomId || !user || !isSitePasswordVerified) return;
+    console.log('[Room Chat] Socket.IO check:', { roomId, user: !!user });
+    if (!roomId || !user) {
+      console.log('[Room Chat] Socket.IO connection blocked - missing roomId or user');
+      return;
+    }
 
+    console.log('[Room Chat] Initializing Socket.IO connection for room:', roomId);
     // Connect with minimal auth data - server reads credentials from HTTP-only cookies
     const newSocket = io('/', {
       auth: {
@@ -191,7 +196,7 @@ export default function RoomChat() {
       setSocket(null);
       setIsConnected(false);
     };
-  }, [roomId, user, isSitePasswordVerified, toast, setLocation]);
+  }, [roomId, user, toast, setLocation]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
