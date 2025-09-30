@@ -58,6 +58,7 @@ export default function RoomChat() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const hasLoadedInitialMessages = useRef(false);
 
   // Fetch room details
   const { data: room, isLoading: loadingRoom, error: roomError } = useQuery<ChatRoom>({
@@ -130,7 +131,11 @@ export default function RoomChat() {
     newSocket.on('room_state', (state: RoomState) => {
       console.log('Room state received:', state);
       setRoomState(state);
-      setMessages(state.recentMessages || []);
+      // Only set messages on initial load, not on reconnects
+      if (!hasLoadedInitialMessages.current && state.recentMessages) {
+        setMessages(state.recentMessages);
+        hasLoadedInitialMessages.current = true;
+      }
     });
 
     newSocket.on('room_joined', ({ roomId: joinedRoomId }) => {
@@ -194,8 +199,9 @@ export default function RoomChat() {
       newSocket.disconnect();
       setSocket(null);
       setIsConnected(false);
+      hasLoadedInitialMessages.current = false; // Reset on unmount
     };
-  }, [roomId, user, toast, setLocation]);
+  }, [roomId, user]); // Remove toast and setLocation to prevent reconnects
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -283,7 +289,7 @@ export default function RoomChat() {
   }
 
   // Use messages state which gets updated by Socket.IO events
-  const displayMessages = messages.length > 0 ? messages : (roomState?.recentMessages || initialMessages);
+  const displayMessages = messages.length > 0 ? messages : (roomState?.recentMessages || initialMessages || []);
 
   return (
     <div className="h-screen flex bg-background">
