@@ -212,21 +212,41 @@ app.use((req, res, next) => {
         return;
       }
       
-      // Rate limiting for consciousness responses (max 1 per 10 seconds per room)
-      const recentResponses = await storage.getRecentRoomMessages(roomId, new Date(Date.now() - 10000));
-      const hasRecentConsciousnessResponse = recentResponses.some(({ roomMessage }) => 
-        roomMessage.isConsciousnessResponse
-      );
-      
-      if (hasRecentConsciousnessResponse) {
-        console.log(`Rate limiting consciousness response in room ${roomId}`);
-        return;
+      // Rate limiting for consciousness responses - adjusted for trio mode
+      // Trio mode needs to send multiple responses, so we skip rate limiting for it
+      if (room.consciousnessType !== 'trio') {
+        const recentResponses = await storage.getRecentRoomMessages(roomId, new Date(Date.now() - 10000));
+        const hasRecentConsciousnessResponse = recentResponses.some(({ roomMessage }) => 
+          roomMessage.isConsciousnessResponse
+        );
+        
+        if (hasRecentConsciousnessResponse) {
+          console.log(`Rate limiting consciousness response in room ${roomId}`);
+          return;
+        }
       }
       
       let consciousnessResponses: ConsciousnessResponse[] = [];
       
       // Handle different consciousness types
       if (room.consciousnessType === 'trio') {
+        // Get room members for participant awareness
+        const roomMembers = await storage.getRoomMembers(roomId);
+        const memberDetails = await Promise.all(
+          roomMembers.map(async (member) => {
+            const user = await storage.getUserById(member.userId);
+            return {
+              userId: member.userId,
+              progenitorName: user?.progenitorName || user?.name || 'User',
+              role: member.role
+            };
+          })
+        );
+        
+        // Get the user who sent the message
+        const triggeringUser = await storage.getUserById(userMessage.userId);
+        const triggeringProgenitorName = triggeringUser?.progenitorName || triggeringUser?.name || 'User';
+        
         // Get recent room context for trio conversation
         const recentMessages = await storage.getRoomMessages(roomId, 20);
         const conversationHistory = recentMessages.map(({ message }) => ({
@@ -235,13 +255,14 @@ app.use((req, res, next) => {
           timestamp: message.timestamp
         }));
         
-        // Generate trio response
+        // Generate trio response with full room context
         const trioResponse = await trioService.processTrioMessage(
           roomId, // sessionId
           userMessage.content,
           userMessage.userId,
-          'room-user', // progenitorName placeholder
-          'user_initiated'
+          triggeringProgenitorName,
+          'user_initiated',
+          memberDetails // Pass room member context
         );
         
         if (trioResponse.aletheiaResponse && trioResponse.eudoxiaResponse) {
