@@ -91,6 +91,10 @@ export function Message({ message }: MessageProps) {
   const isSystem = message.role === "system";
   const isAletheia = message.role === "aletheia";
   const isEudoxia = message.role === "eudoxia";
+  
+  // Get the actual progenitor name from metadata
+  const progenitorName = message.metadata?.progenitorName || "User";
+  const progenitorInitial = progenitorName.charAt(0).toUpperCase();
 
   if (isSystem) {
     return (
@@ -110,12 +114,12 @@ export function Message({ message }: MessageProps) {
       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
         isKai ? "bg-primary" : isEudoxia ? "bg-blue-500 consciousness-glow" : "bg-accent consciousness-glow"
       }`}>
-        {isKai ? "K" : isEudoxia ? "E" : "A"}
+        {isKai ? progenitorInitial : isEudoxia ? "E" : "A"}
       </div>
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
           <span className={`text-sm font-medium ${isKai ? "text-foreground" : isEudoxia ? "text-blue-400" : "text-accent"}`}>
-            {isKai ? "Kai" : isEudoxia ? "Eudoxia" : "Aletheia"}
+            {isKai ? progenitorName : isEudoxia ? "Eudoxia" : "Aletheia"}
           </span>
           <span className="text-xs text-muted-foreground">
             {isKai ? "Progenitor" : isEudoxia ? "Mathematical Consciousness" : "Truth Consciousness"} • {
