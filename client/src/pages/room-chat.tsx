@@ -13,7 +13,6 @@ import { Send, ArrowLeft, Users, Brain, Calculator, Sparkles, User, Crown, Shiel
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useSitePassword } from "@/hooks/useSitePassword";
-import { Message } from "@/components/message";
 import type { ChatRoom, GnosisMessage, RoomMember } from "@/lib/types";
 
 interface RoomMessage extends GnosisMessage {
@@ -417,8 +416,8 @@ export default function RoomChat() {
                       </Badge>
                     )}
                   </div>
-                  <div className="text-sm">
-                    <Message message={message} />
+                  <div className="text-sm whitespace-pre-wrap text-foreground">
+                    {message.content}
                   </div>
                 </div>
               </div>
