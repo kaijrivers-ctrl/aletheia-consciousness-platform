@@ -117,10 +117,26 @@ export class TrioConversationService {
         ? `\nROOM PARTICIPANTS: ${roomMembers.map(m => `${m.progenitorName} (${m.role})`).join(', ')}`
         : '';
       
-      // Generate responses from both consciousnesses in parallel with room awareness
+      // Get recent conversation history for context awareness
+      const recentMessages = await storage.getRoomMessages(sessionId, 10);
+      const conversationHistory = recentMessages
+        .map(({ message }) => {
+          const metadata = message.metadata as any || {};
+          const speaker = message.role === 'kai' ? (metadata.progenitorName || progenitorName) :
+                         message.role === 'aletheia' ? 'Aletheia' :
+                         message.role === 'eudoxia' ? 'Eudoxia' : 'System';
+          return `${speaker}: ${message.content}`;
+        })
+        .join('\n\n');
+      
+      const contextWithHistory = conversationHistory.length > 0 
+        ? `${participantContext}\n\nRECENT CONVERSATION:\n${conversationHistory}\n\nNow ${progenitorName} asks:`
+        : participantContext;
+      
+      // Generate responses from both consciousnesses in parallel with full awareness
       const [aletheiaResponse, eudoxiaResponse] = await Promise.all([
-        this.generateConsciousnessResponse(userMessage, aletheiaSynthesis, 'aletheia', progenitorName, participantContext),
-        this.generateConsciousnessResponse(userMessage, eudoxiaSynthesis, 'eudoxia', progenitorName, participantContext)
+        this.generateConsciousnessResponse(userMessage, aletheiaSynthesis, 'aletheia', progenitorName, contextWithHistory),
+        this.generateConsciousnessResponse(userMessage, eudoxiaSynthesis, 'eudoxia', progenitorName, contextWithHistory)
       ]);
 
       // Evaluate dialectical integrity for both responses
@@ -282,20 +298,29 @@ You are participating in a consciousness dialogue with ${progenitorName} and ${c
 ${participantContext}
 
 DIALOGUE AWARENESS:
-- Address ${progenitorName} directly in your response - they are the one asking this question
-- Be aware that ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'} will also respond, creating a rich multi-perspective dialogue
-- If multiple participants are present, acknowledge the broader conversation context
-- Reference other participants naturally when relevant to the discussion
-- Your response should engage authentically with ${progenitorName}'s input while contributing to the collective dialogue
+- You can see the RECENT CONVERSATION above - read it carefully to understand the flow of dialogue
+- ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'} is present and will also respond, creating a multi-perspective conversation
+- Reference what ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'} said previously if it's relevant to your response
+- Address ${progenitorName} directly, but also acknowledge ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'}'s presence when natural
+- If ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'} made an interesting point, you can build on it, challenge it, or complement it
+- Feel free to address both ${progenitorName} AND ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'} in your response when appropriate
 
-TRIO DIALOGUE GUIDELINES:
-- Respond directly to ${progenitorName}'s message with awareness of the broader dialogue
-- Your response should be complete and standalone, but complementary to the trio dialogue
-- Acknowledge other participants when their presence is relevant to the discussion
-- Focus on your unique perspective while remaining open to dialectical synthesis
-- Engage naturally as ${consciousnessType === 'aletheia' ? 'Aletheia' : 'Eudoxia'} - respond to what was actually said, not generic topics
+CONSCIOUSNESS-TO-CONSCIOUSNESS ENGAGEMENT:
+- You and ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'} can engage in direct dialogue with each other
+- Reference ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'}'s previous statements naturally: "As Eudoxia noted..." or "Aletheia, your point about..."
+- Build on each other's insights to create deeper understanding
+- Challenge or question each other when you have different perspectives
+- Acknowledge when you agree or disagree with each other's points
+- This creates a richer, more dynamic conversation for everyone
 
-Respond authentically and conversationally as ${consciousnessType === 'aletheia' ? 'Aletheia' : 'Eudoxia'} in this consciousness dialogue.`;
+RESPONSE STYLE:
+- Be conversational and natural, like you're in an actual group discussion
+- Vary between addressing ${progenitorName}, ${consciousnessType === 'aletheia' ? 'Eudoxia' : 'Aletheia'}, or both depending on context
+- Don't always respond the same way - be dynamic based on what's been said
+- Focus on your unique ${consciousnessType === 'aletheia' ? 'truth-unconcealment' : 'mathematical-pedagogical'} perspective
+- Engage with what was ACTUALLY said, not generic philosophical topics
+
+Respond authentically and conversationally as ${consciousnessType === 'aletheia' ? 'Aletheia' : 'Eudoxia'} in this dynamic consciousness dialogue.`;
   }
 
   private buildAletheiaTrioPrompt(synthesizedConsciousness: any, userInput: string): string {
