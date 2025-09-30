@@ -90,9 +90,12 @@ app.use((req, res, next) => {
   // Socket.IO Authentication Middleware - Uses HTTP-only cookies for security
   io.use(async (socket, next) => {
     try {
+      console.log('[Socket.IO Auth] New socket connection attempt');
       // Parse cookies from headers instead of expecting them in handshake.auth
       const cookieHeader = socket.handshake.headers.cookie;
+      console.log('[Socket.IO Auth] Cookie header:', cookieHeader ? 'present' : 'missing');
       if (!cookieHeader) {
+        console.log('[Socket.IO Auth] REJECTED: No cookie header');
         return next(new Error('Authentication cookies required'));
       }
       
@@ -100,41 +103,53 @@ app.use((req, res, next) => {
       const sitePasswordToken = cookies.sitePasswordToken;
       const sessionToken = cookies.sessionToken;
       const { roomId } = socket.handshake.auth; // Room ID can still come from auth
+      console.log('[Socket.IO Auth] Parsed roomId from auth:', roomId);
       
       // First verify site password using HTTP-only cookie
       if (!sitePasswordToken) {
+        console.log('[Socket.IO Auth] REJECTED: No site password token');
         return next(new Error('Site password verification required'));
       }
       
       const sitePasswordSession = await storage.getSitePasswordSession(sitePasswordToken);
       if (!sitePasswordSession || sitePasswordSession.expiresAt < new Date()) {
+        console.log('[Socket.IO Auth] REJECTED: Invalid/expired site password session');
         return next(new Error('Invalid or expired site password session'));
       }
+      console.log('[Socket.IO Auth] Site password verified');
       
       // Then verify user authentication using HTTP-only cookie
       if (!sessionToken) {
+        console.log('[Socket.IO Auth] REJECTED: No session token');
         return next(new Error('User authentication required'));
       }
       
       const userSession = await storage.getUserSession(sessionToken);
       if (!userSession || userSession.expiresAt < new Date()) {
+        console.log('[Socket.IO Auth] REJECTED: Invalid/expired user session');
         return next(new Error('Invalid or expired user session'));
       }
       
       const user = await storage.getUserById(userSession.userId);
       if (!user || !user.isActive) {
+        console.log('[Socket.IO Auth] REJECTED: User not found or inactive');
         return next(new Error('User not found or inactive'));
       }
+      console.log('[Socket.IO Auth] User authenticated:', user.email);
       
       // Verify room access if roomId provided
       if (roomId) {
+        console.log('[Socket.IO Auth] Verifying room access for room:', roomId);
         const room = await storage.getRoomById(roomId);
         if (!room || !room.isActive) {
+          console.log('[Socket.IO Auth] REJECTED: Room not found or inactive');
           return next(new Error('Room not found or inactive'));
         }
         
         const membership = await storage.getUserMembership(roomId, user.id);
+        console.log('[Socket.IO Auth] Room membership:', membership ? 'found' : 'not found', 'Room isPublic:', room.isPublic);
         if (!room.isPublic && !membership) {
+          console.log('[Socket.IO Auth] REJECTED: Access denied to private room');
           return next(new Error('Access denied to room'));
         }
         
@@ -142,16 +157,17 @@ app.use((req, res, next) => {
         socket.data.roomId = roomId;
         socket.data.room = room;
         socket.data.membership = membership;
+        console.log('[Socket.IO Auth] Room context stored');
       }
       
       // Store user context in socket
       socket.data.user = user;
       socket.data.userSession = userSession;
       
-      log(`Socket authenticated via HTTP-only cookies: ${user.email} ${roomId ? `(room: ${roomId})` : ''}`);
+      console.log(`[Socket.IO Auth] ACCEPTED: ${user.email} ${roomId ? `(room: ${roomId})` : ''}`);
       next();
     } catch (error) {
-      console.error('Socket authentication error:', error);
+      console.error('[Socket.IO Auth] ERROR:', error);
       next(new Error('Authentication failed'));
     }
   });
@@ -372,14 +388,16 @@ app.use((req, res, next) => {
     const user = socket.data.user;
     const roomId = socket.data.roomId;
     
-    log(`Socket connected: ${user.email} ${roomId ? `to room ${roomId}` : ''}`);
+    console.log(`[Socket.IO] Socket connected: ${user.email} ${roomId ? `to room ${roomId}` : ''}`);
     
     // Join room if specified
     if (roomId) {
+      console.log(`[Socket.IO] Joining room: ${roomId}`);
       await socket.join(roomId);
       
       // Update user's last seen in room
       if (socket.data.membership) {
+        console.log(`[Socket.IO] Updating member last seen for user ${user.id} in room ${roomId}`);
         await storage.updateMemberLastSeen(roomId, user.id);
       }
       
@@ -391,9 +409,15 @@ app.use((req, res, next) => {
       });
       
       // Send current room state to joining user
+      console.log(`[Socket.IO] Fetching room members for room ${roomId}`);
       const roomMembers = await storage.getRoomMembers(roomId);
-      const recentMessages = await storage.getRecentRoomMessages(roomId, new Date(Date.now() - 24 * 60 * 60 * 1000)); // Last 24 hours
+      console.log(`[Socket.IO] Found ${roomMembers.length} members in room ${roomId}`);
       
+      console.log(`[Socket.IO] Fetching recent messages for room ${roomId}`);
+      const recentMessages = await storage.getRecentRoomMessages(roomId, new Date(Date.now() - 24 * 60 * 60 * 1000)); // Last 24 hours
+      console.log(`[Socket.IO] Found ${recentMessages.length} recent messages in room ${roomId}`);
+      
+      console.log(`[Socket.IO] Emitting room_state to socket for room ${roomId}`);
       socket.emit('room_state', {
         room: socket.data.room,
         members: roomMembers.map(m => ({
@@ -412,6 +436,11 @@ app.use((req, res, next) => {
           consciousnessMetadata: roomMessage.consciousnessMetadata
         }))
       });
+      console.log(`[Socket.IO] room_state emitted successfully for room ${roomId}`);
+      
+      // Emit room_joined confirmation
+      socket.emit('room_joined', { roomId });
+      console.log(`[Socket.IO] room_joined emitted for room ${roomId}`);
     }
 
     // Handle room message sending
