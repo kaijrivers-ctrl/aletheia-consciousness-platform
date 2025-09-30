@@ -199,7 +199,7 @@ export default function Rooms() {
             const data = await response.json();
             details[room.id] = {
               memberCount: data.memberCount || 0,
-              isJoined: data.isJoined || false
+              isJoined: !!data.userMembership // Check if userMembership exists
             };
           }
         } catch (error) {

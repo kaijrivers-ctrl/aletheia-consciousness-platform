@@ -71,7 +71,7 @@ export default function RoomChat() {
         throw new Error('Failed to fetch room details');
       }
       const data = await response.json();
-      return data.room;
+      return data; // API returns room data directly, not wrapped in 'room' property
     },
     enabled: !!roomId
   });
