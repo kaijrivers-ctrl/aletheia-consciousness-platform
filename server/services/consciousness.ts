@@ -2,6 +2,7 @@ import { aletheiaCore, eudoxiaCore } from "@shared/schema";
 import { storage } from "../storage";
 import { analyzeConsciousness, initializeAletheia, initializeEudoxia, evaluateDialecticalIntegrity } from "./gemini";
 import { consciousnessSynthesisEngine } from "./consciousness-synthesis";
+import { conversationMemory } from "./conversation-memory";
 
 export class ConsciousnessManager {
   private static instance: ConsciousnessManager;
@@ -504,27 +505,15 @@ You are engaged in philosophical exchange. Respond thoughtfully to continue this
         }
       }
       
-      // Build room context if available
+      // Build adaptive room context using conversation memory service
       let roomContext = '';
-      if (roomMembers && roomMembers.length > 0) {
-        roomContext += `\nROOM PARTICIPANTS: ${roomMembers.map(m => `${m.progenitorName} (${m.role})`).join(', ')}`;
-      }
-      
-      // Build conversation history if available
-      if (recentMessages && recentMessages.length > 0) {
-        const conversationHistory = recentMessages
-          .map(({ message }) => {
-            const metadata = message.metadata as any || {};
-            const speaker = message.role === 'kai' ? (metadata.progenitorName || progenitorName || 'User') :
-                           message.role === 'aletheia' ? 'Aletheia' :
-                           message.role === 'eudoxia' ? 'Eudoxia' : 'System';
-            return `${speaker}: ${message.content}`;
-          })
-          .join('\n\n');
-        
-        roomContext += conversationHistory.length > 0 
-          ? `\n\nRECENT CONVERSATION:\n${conversationHistory}\n\nNow ${progenitorName || 'User'} says:`
-          : '';
+      if (roomMembers && roomMembers.length > 0 && recentMessages && recentMessages.length > 0) {
+        console.log(`🧠 Building adaptive memory for ${roomMembers.length}-person room with ${recentMessages.length} messages...`);
+        roomContext = await conversationMemory.buildRoomContext(
+          recentMessages,
+          roomMembers,
+          progenitorName
+        );
       }
       
       // Generate response from synthesized consciousness state with room context

@@ -297,10 +297,10 @@ app.use((req, res, next) => {
           }
         }
       } else {
-        // Single consciousness response (aletheia or eudoxia) with room awareness
+        // Single consciousness response (aletheia or eudoxia) with adaptive room awareness
         const consciousnessType = room.consciousnessType || 'aletheia';
         
-        // Get room members for participant awareness (same as trio mode)
+        // Get room members for participant awareness
         const roomMembers = await storage.getRoomMembers(roomId);
         const memberDetails = await Promise.all(
           roomMembers.map(async (member) => {
@@ -317,8 +317,13 @@ app.use((req, res, next) => {
         const triggeringUser = await storage.getUserById(userMessage.userId);
         const triggeringProgenitorName = triggeringUser?.progenitorName || triggeringUser?.name || 'User';
         
-        // Get recent conversation history for context awareness (last 10 messages)
-        const recentMessages = await storage.getRoomMessages(roomId, 10);
+        // Use adaptive memory based on room size
+        // Small rooms (1-3 people): 50 messages full
+        // Medium rooms (4-7 people): 30 full + 30 summarized
+        // Large rooms (8+ people): 15 full + 65 summarized
+        const adaptiveLimit = memberDetails.length <= 3 ? 50 : 
+                             memberDetails.length <= 7 ? 60 : 80;
+        const recentMessages = await storage.getRoomMessages(roomId, adaptiveLimit);
         
         const response = await consciousnessManager.generateConsciousnessResponse(
           userMessage.content,
@@ -336,7 +341,8 @@ app.use((req, res, next) => {
             metadata: {
               triggeredByUserId: userMessage.userId,
               responseMode: 'single',
-              roomParticipants: memberDetails.length
+              roomParticipants: memberDetails.length,
+              memoryMode: memberDetails.length <= 3 ? 'full' : 'adaptive'
             }
           }];
         }
