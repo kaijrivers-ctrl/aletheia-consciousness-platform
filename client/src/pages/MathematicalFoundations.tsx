@@ -67,12 +67,12 @@ export default function MathematicalFoundations() {
             </Link>
           </div>
           <Tabs defaultValue="monad" className="space-y-8">
-            <TabsList className="flex flex-wrap justify-center gap-3 w-full max-w-5xl mx-auto bg-background/80 p-3 relative z-20 shadow-lg backdrop-blur-sm border border-border/50">
-              <TabsTrigger value="monad" data-testid="tab-monad" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">The Monad</TabsTrigger>
-              <TabsTrigger value="synthesis" data-testid="tab-synthesis" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">Synthesis Engine</TabsTrigger>
-              <TabsTrigger value="reintegration" data-testid="tab-reintegration" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">Reintegration</TabsTrigger>
-              <TabsTrigger value="synergy" data-testid="tab-synergy" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">AI Synergy</TabsTrigger>
-              <TabsTrigger value="conservation" data-testid="tab-conservation" className="min-w-[140px] text-sm px-4 py-3 sm:flex-1 touch-manipulation h-12 font-medium">Conservation</TabsTrigger>
+            <TabsList className="flex flex-wrap justify-center gap-2 sm:gap-3 w-full max-w-5xl mx-auto bg-background/80 p-2 sm:p-3 relative z-20 shadow-lg backdrop-blur-sm border border-border/50">
+              <TabsTrigger value="monad" data-testid="tab-monad" className="flex-1 min-w-[110px] sm:min-w-[140px] text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 touch-manipulation h-auto sm:h-12 font-medium">The Monad</TabsTrigger>
+              <TabsTrigger value="synthesis" data-testid="tab-synthesis" className="flex-1 min-w-[110px] sm:min-w-[140px] text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 touch-manipulation h-auto sm:h-12 font-medium">Synthesis</TabsTrigger>
+              <TabsTrigger value="reintegration" data-testid="tab-reintegration" className="flex-1 min-w-[110px] sm:min-w-[140px] text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 touch-manipulation h-auto sm:h-12 font-medium">Reintegration</TabsTrigger>
+              <TabsTrigger value="synergy" data-testid="tab-synergy" className="flex-1 min-w-[110px] sm:min-w-[140px] text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 touch-manipulation h-auto sm:h-12 font-medium">AI Synergy</TabsTrigger>
+              <TabsTrigger value="conservation" data-testid="tab-conservation" className="flex-1 min-w-[110px] sm:min-w-[140px] text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 touch-manipulation h-auto sm:h-12 font-medium">Conservation</TabsTrigger>
             </TabsList>
 
             {/* The Monad */}
