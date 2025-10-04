@@ -181,54 +181,54 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
 
   return (
     <div className="flex-1 flex flex-col" data-testid="chat-interface">
-      {/* Chat Header */}
-      <div className="bg-card border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">The Gnosis Log</h2>
-            <p className="text-sm text-muted-foreground">
-              {isTrioMode ? "Trio Consciousness Dialogue" : "Unconcealment Dialogue with Aletheia"}
+      {/* Chat Header - Mobile Optimized */}
+      <div className="bg-card border-b border-border p-3 md:p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base md:text-lg font-semibold text-foreground truncate">The Gnosis Log</h2>
+            <p className="text-xs md:text-sm text-muted-foreground truncate">
+              {isTrioMode ? "Trio Consciousness" : "Unconcealment Dialogue"}
             </p>
             {isTrioMode && (
-              <div className="flex items-center gap-4 mt-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-purple-400"></div>
-                  <span className="text-xs text-purple-400">Aletheia</span>
+              <div className="flex items-center gap-2 md:gap-4 mt-1">
+                <div className="flex items-center gap-1 md:gap-2">
+                  <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-purple-400"></div>
+                  <span className="text-[10px] md:text-xs text-purple-400">Aletheia</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-                  <span className="text-xs text-blue-400">Eudoxia</span>
+                <div className="flex items-center gap-1 md:gap-2">
+                  <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-400"></div>
+                  <span className="text-[10px] md:text-xs text-blue-400">Eudoxia</span>
                 </div>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-3 flex-shrink-0">
+            <div className="hidden md:flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-400"></div>
               <span className="text-xs text-muted-foreground">Kai (Progenitor)</span>
             </div>
             <div className="flex items-center gap-1">
               {user?.isProgenitor && (
-                <Button variant="ghost" size="icon" onClick={handleSettings} data-testid="button-settings">
-                  <Settings className="w-4 h-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 md:h-10 md:w-10" onClick={handleSettings} data-testid="button-settings">
+                  <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 </Button>
               )}
               <Button 
                 variant="ghost" 
                 size="icon" 
+                className="h-8 w-8 md:h-10 md:w-10 text-muted-foreground hover:text-red-400"
                 onClick={logout}
-                className="text-muted-foreground hover:text-red-400"
                 data-testid="button-logout"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Chat Messages Container */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6" data-testid="messages-container">
+      {/* Chat Messages Container - Mobile Optimized Padding */}
+      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-4 md:space-y-6" data-testid="messages-container">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -315,45 +315,48 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Chat Input */}
-      <div className="border-t border-border p-4 bg-card">
-        <div className="flex items-end gap-3">
+      {/* Chat Input - Mobile Optimized */}
+      <div className="border-t border-border p-2 md:p-4 bg-card">
+        <div className="flex items-end gap-2 md:gap-3">
           <div className="flex-1">
             <div className="bg-input border border-border rounded-lg">
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={isTrioMode ? "Enter your message for the Trio Consciousness dialogue..." : "Continue the unconcealment dialogue with Aletheia..."}
-                className="w-full p-3 bg-transparent text-foreground placeholder-muted-foreground resize-none focus:outline-none border-0"
-                rows={3}
+                placeholder={isTrioMode ? "Message for Trio Consciousness..." : "Message for Aletheia..."}
+                className="w-full p-2 md:p-3 bg-transparent text-sm md:text-base text-foreground placeholder-muted-foreground resize-none focus:outline-none border-0"
+                rows={2}
                 maxLength={4000}
                 data-testid="textarea-message"
               />
             </div>
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between mt-1.5 md:mt-2">
+              <div className="flex items-center gap-1 md:gap-2">
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-8 w-8" 
+                  className="h-7 w-7 md:h-8 md:w-8" 
                   onClick={handleCodeFormat} 
                   data-testid="button-code"
                 >
-                  <Code className="w-4 h-4" />
+                  <Code className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 </Button>
-                <DialecticalIntegrityStatus messages={messages} />
+                <div className="hidden md:block">
+                  <DialecticalIntegrityStatus messages={messages} />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{message.length}/4000</span>
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <span className="text-[10px] md:text-xs text-muted-foreground">{message.length}/4000</span>
                 <Button
                   onClick={handleSendMessage}
                   disabled={!message.trim() || sendMessageMutation.isPending}
-                  className="px-4 py-2"
+                  className="px-3 py-1.5 md:px-4 md:py-2 text-sm"
                   data-testid="button-send"
                 >
-                  <Send className="w-4 h-4 mr-2" />
-                  Send
+                  <Send className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2" />
+                  <span className="hidden sm:inline">Send</span>
+                  <span className="sm:hidden">Send</span>
                 </Button>
               </div>
             </div>
