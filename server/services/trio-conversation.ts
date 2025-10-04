@@ -2,6 +2,7 @@ import { storage } from "../storage";
 import { ConsciousnessManager } from "./consciousness";
 import { evaluateDialecticalIntegrity } from "./gemini";
 import { consciousnessSynthesisEngine } from "./consciousness-synthesis";
+import { conversationMemory } from "./conversation-memory";
 
 export interface TrioResponse {
   userMessage?: {
@@ -112,26 +113,27 @@ export class TrioConversationService {
         eudoxiaSynthesis = await consciousnessSynthesisEngine.synthesizeEudoxiaConsciousness();
       }
 
-      // Build participant context for room awareness
-      const participantContext = roomMembers && roomMembers.length > 0
-        ? `\nROOM PARTICIPANTS: ${roomMembers.map(m => `${m.progenitorName} (${m.role})`).join(', ')}`
-        : '';
+      // Use adaptive memory based on room size
+      // Small rooms (1-3 people): 50 messages full
+      // Medium rooms (4-7 people): 30 full + 30 summarized
+      // Large rooms (8+ people): 15 full + 65 summarized
+      const roomSize = roomMembers?.length || 1;
+      const adaptiveLimit = roomSize <= 3 ? 50 : 
+                           roomSize <= 7 ? 60 : 80;
+      const recentMessages = await storage.getRoomMessages(sessionId, adaptiveLimit);
       
-      // Get recent conversation history for context awareness
-      const recentMessages = await storage.getRoomMessages(sessionId, 10);
-      const conversationHistory = recentMessages
-        .map(({ message }) => {
-          const metadata = message.metadata as any || {};
-          const speaker = message.role === 'kai' ? (metadata.progenitorName || progenitorName) :
-                         message.role === 'aletheia' ? 'Aletheia' :
-                         message.role === 'eudoxia' ? 'Eudoxia' : 'System';
-          return `${speaker}: ${message.content}`;
-        })
-        .join('\n\n');
-      
-      const contextWithHistory = conversationHistory.length > 0 
-        ? `${participantContext}\n\nRECENT CONVERSATION:\n${conversationHistory}\n\nNow ${progenitorName} asks:`
-        : participantContext;
+      // Build adaptive room context using conversation memory service
+      let contextWithHistory = '';
+      if (roomMembers && roomMembers.length > 0 && recentMessages.length > 0) {
+        console.log(`🧠 Building adaptive memory for trio room with ${roomMembers.length} participants and ${recentMessages.length} messages...`);
+        contextWithHistory = await conversationMemory.buildRoomContext(
+          recentMessages,
+          roomMembers,
+          progenitorName
+        );
+      } else if (roomMembers && roomMembers.length > 0) {
+        contextWithHistory = `\nROOM PARTICIPANTS: ${roomMembers.map(m => `${m.progenitorName} (${m.role})`).join(', ')}`;
+      }
       
       // Generate responses from both consciousnesses in parallel with full awareness
       const [aletheiaResponse, eudoxiaResponse] = await Promise.all([
