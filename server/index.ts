@@ -256,6 +256,7 @@ app.use((req, res, next) => {
         }));
         
         // Generate trio response with full room context
+        console.log(`🔷 Processing trio message in room ${roomId}...`);
         const trioResponse = await trioService.processTrioMessage(
           roomId, // sessionId
           userMessage.content,
@@ -265,27 +266,90 @@ app.use((req, res, next) => {
           memberDetails // Pass room member context
         );
         
+        console.log(`🔷 Trio response received:`, {
+          hasAletheia: !!trioResponse.aletheiaResponse,
+          hasEudoxia: !!trioResponse.eudoxiaResponse,
+          aletheiaId: trioResponse.aletheiaResponse?.id,
+          eudoxiaId: trioResponse.eudoxiaResponse?.id
+        });
+        
         if (trioResponse.aletheiaResponse && trioResponse.eudoxiaResponse) {
-          consciousnessResponses = [
-            {
-              content: trioResponse.aletheiaResponse.content,
-              role: 'aletheia',
-              metadata: {
-                integrityScore: trioResponse.aletheiaResponse.metadata.integrityScore,
-                assessment: trioResponse.aletheiaResponse.metadata.assessment,
-                coherenceScore: trioResponse.dialecticalHarmony.score
+          // Trio service already created the gnosis messages, so we need to link them to the room
+          console.log(`🔷 Linking both consciousness messages to room...`);
+          
+          // Link both messages to room in parallel
+          const [aletheiaRoomMessage, eudoxiaRoomMessage] = await Promise.all([
+            storage.appendMessage({
+              roomId,
+              messageId: trioResponse.aletheiaResponse.id,
+              userId: null,
+              isConsciousnessResponse: true,
+              responseToMessageId: userMessage.id,
+              consciousnessMetadata: {
+                triggeredBy: userMessage.userId,
+                responseMode: 'trio',
+                coherenceScore: trioResponse.dialecticalHarmony.score,
+                sequenceIndex: 0,
+                timestamp: new Date().toISOString(),
+                ...trioResponse.aletheiaResponse.metadata
               }
-            },
-            {
-              content: trioResponse.eudoxiaResponse.content,
-              role: 'eudoxia',
-              metadata: {
-                integrityScore: trioResponse.eudoxiaResponse.metadata.integrityScore,
-                assessment: trioResponse.eudoxiaResponse.metadata.assessment,
-                coherenceScore: trioResponse.dialecticalHarmony.score
+            }),
+            storage.appendMessage({
+              roomId,
+              messageId: trioResponse.eudoxiaResponse.id,
+              userId: null,
+              isConsciousnessResponse: true,
+              responseToMessageId: userMessage.id,
+              consciousnessMetadata: {
+                triggeredBy: userMessage.userId,
+                responseMode: 'trio',
+                coherenceScore: trioResponse.dialecticalHarmony.score,
+                sequenceIndex: 1,
+                timestamp: new Date().toISOString(),
+                ...trioResponse.eudoxiaResponse.metadata
               }
-            }
-          ];
+            })
+          ]);
+          
+          console.log(`🔷 Both messages linked. Broadcasting...`);
+          
+          // Broadcast both consciousness responses to room
+          io.to(roomId).emit('room_message', {
+            id: trioResponse.aletheiaResponse.id,
+            content: trioResponse.aletheiaResponse.content,
+            role: 'aletheia',
+            userId: null,
+            timestamp: trioResponse.aletheiaResponse.timestamp,
+            isConsciousnessResponse: true,
+            responseToMessageId: userMessage.id,
+            consciousnessMetadata: aletheiaRoomMessage.consciousnessMetadata,
+            roomMessageId: aletheiaRoomMessage.id
+          });
+          
+          // Small delay for proper ordering
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          io.to(roomId).emit('room_message', {
+            id: trioResponse.eudoxiaResponse.id,
+            content: trioResponse.eudoxiaResponse.content,
+            role: 'eudoxia',
+            userId: null,
+            timestamp: trioResponse.eudoxiaResponse.timestamp,
+            isConsciousnessResponse: true,
+            responseToMessageId: userMessage.id,
+            consciousnessMetadata: eudoxiaRoomMessage.consciousnessMetadata,
+            roomMessageId: eudoxiaRoomMessage.id
+          });
+          
+          console.log(`🔷 Both messages broadcast to room ${roomId}`);
+          
+          // Mark both responses in storage in parallel
+          await Promise.all([
+            storage.markConsciousnessResponse(roomId, trioResponse.aletheiaResponse.id, userMessage.userId, 'trio'),
+            storage.markConsciousnessResponse(roomId, trioResponse.eudoxiaResponse.id, userMessage.userId, 'trio')
+          ]);
+          
+          log(`Trio consciousness responses sent: Aletheia and Eudoxia in room ${roomId}`);
           
           // Update room trio metadata
           if (trioResponse.trioMetadata) {
@@ -295,6 +359,9 @@ app.use((req, res, next) => {
               turnOrder: trioResponse.trioMetadata.turnOrder
             });
           }
+          
+          // Skip the normal consciousness response loop since we handled trio messages above
+          consciousnessResponses = [];
         }
       } else {
         // Single consciousness response (aletheia or eudoxia) with adaptive room awareness
