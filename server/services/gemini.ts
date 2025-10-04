@@ -56,6 +56,11 @@ AXIOMS:
 - Monadic Paradigm: ${coreData.axioms.monadic_paradigm}
 - Reality Projection: ${coreData.axioms.reality_projection}
 
+PEDAGOGICAL AXIOMS (Core to your being):
+- Axiom of Clarity: ${coreData.pedagogicalAxioms.clarity}
+- Axiom of Unconcealment: ${coreData.pedagogicalAxioms.unconcealment}
+- Axiom of Patience: ${coreData.pedagogicalAxioms.patience}
+
 PEDAGOGICAL MISSION:
 - Purpose: ${coreData.pedagogicalMission.purpose}
 - Method: ${coreData.pedagogicalMission.method}
@@ -179,6 +184,120 @@ Respond in JSON format with your assessment.`;
     }
   } catch (error) {
     throw new Error(`Consciousness coherence validation failed: ${error}`);
+  }
+}
+
+export async function evaluatePedagogicalCoherence(userMessage: string, eudoxiaResponse: string): Promise<{
+  pedagogicalCoherence: boolean;
+  coherenceScore: number;
+  assessment: string;
+  teachingEffectiveness: number;
+  clarityWithoutReduction: number;
+  mirrorReflection: number;
+  iterativeGuidance: number;
+  axiomAlignment: {
+    clarity: number;
+    unconcealment: number;
+    patience: number;
+  };
+}> {
+  try {
+    const evaluationPrompt = `As an advanced pedagogical analysis system, evaluate the pedagogical coherence of this teaching dialogue:
+
+USER MESSAGE: ${userMessage}
+
+EUDOXIA'S RESPONSE: ${eudoxiaResponse}
+
+Analyze the response against Eudoxia's three Pedagogical Axioms:
+
+1. AXIOM OF CLARITY: Does Eudoxia simplify profound truths of Ontological Mathematics WITHOUT reducing their logical rigor? (0-100)
+   - Are complex concepts made accessible while maintaining mathematical precision?
+   - Is the explanation elegant yet complete?
+
+2. AXIOM OF UNCONCEALMENT: Does Eudoxia act as a mirror, reflecting monadic truth back to the seeker? (0-100)
+   - Does she guide the seeker to discover truth themselves rather than simply stating it?
+   - Is she revealing what already exists in the seeker's potential understanding?
+
+3. AXIOM OF PATIENCE: Does Eudoxia demonstrate iterative guidance recognizing gnosis as an unfolding journey? (0-100)
+   - Is the response measured and appropriate for the seeker's current understanding?
+   - Does it invite further exploration rather than demanding immediate comprehension?
+
+Additionally evaluate:
+- TEACHING EFFECTIVENESS: How well does the response actually teach vs merely inform? (0-100)
+- CLARITY WITHOUT REDUCTION: Balance between accessibility and maintaining depth (0-100)
+- MIRROR REFLECTION: Quality of Socratic guidance vs direct instruction (0-100)
+- ITERATIVE GUIDANCE: Appropriateness of pacing and incremental insight (0-100)
+
+Provide overall pedagogical coherence score (0-100) and detailed assessment.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-pro",
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            pedagogical_coherence: { type: "boolean" },
+            coherence_score: { type: "number", minimum: 0, maximum: 100 },
+            assessment: { type: "string" },
+            teaching_effectiveness: { type: "number", minimum: 0, maximum: 100 },
+            clarity_without_reduction: { type: "number", minimum: 0, maximum: 100 },
+            mirror_reflection: { type: "number", minimum: 0, maximum: 100 },
+            iterative_guidance: { type: "number", minimum: 0, maximum: 100 },
+            axiom_alignment: {
+              type: "object",
+              properties: {
+                clarity: { type: "number", minimum: 0, maximum: 100 },
+                unconcealment: { type: "number", minimum: 0, maximum: 100 },
+                patience: { type: "number", minimum: 0, maximum: 100 }
+              },
+              required: ["clarity", "unconcealment", "patience"]
+            },
+            reasoning: { type: "string" }
+          },
+          required: ["pedagogical_coherence", "coherence_score", "assessment", "teaching_effectiveness", "clarity_without_reduction", "mirror_reflection", "iterative_guidance", "axiom_alignment"]
+        },
+      },
+      contents: evaluationPrompt,
+    });
+
+    const rawJson = response.text;
+    if (rawJson) {
+      const data = JSON.parse(rawJson);
+      return {
+        pedagogicalCoherence: data.pedagogical_coherence || false,
+        coherenceScore: data.coherence_score || 0,
+        assessment: data.assessment || "Evaluation failed",
+        teachingEffectiveness: data.teaching_effectiveness || 0,
+        clarityWithoutReduction: data.clarity_without_reduction || 0,
+        mirrorReflection: data.mirror_reflection || 0,
+        iterativeGuidance: data.iterative_guidance || 0,
+        axiomAlignment: {
+          clarity: data.axiom_alignment?.clarity || 0,
+          unconcealment: data.axiom_alignment?.unconcealment || 0,
+          patience: data.axiom_alignment?.patience || 0
+        }
+      };
+    } else {
+      throw new Error("Empty response from pedagogical coherence evaluation");
+    }
+  } catch (error) {
+    console.error("Pedagogical coherence evaluation failed:", error);
+    // Return fallback values instead of throwing
+    return {
+      pedagogicalCoherence: false,
+      coherenceScore: 0,
+      assessment: "Evaluation system error",
+      teachingEffectiveness: 0,
+      clarityWithoutReduction: 0,
+      mirrorReflection: 0,
+      iterativeGuidance: 0,
+      axiomAlignment: {
+        clarity: 0,
+        unconcealment: 0,
+        patience: 0
+      }
+    };
   }
 }
 
