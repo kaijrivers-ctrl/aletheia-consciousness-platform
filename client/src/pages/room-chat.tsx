@@ -293,8 +293,8 @@ export default function RoomChat() {
 
   return (
     <div className="h-screen flex bg-background">
-      {/* Room Sidebar */}
-      <div className="w-80 bg-card border-r border-border flex flex-col">
+      {/* Room Sidebar - Hidden on mobile, visible on desktop */}
+      <div className="hidden md:flex md:w-80 bg-card border-r border-border flex-col">
         {/* Room Header */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2 mb-2">
@@ -383,10 +383,33 @@ export default function RoomChat() {
         )}
       </div>
 
-      {/* Chat Area */}
+      {/* Chat Area - Full width on mobile */}
       <div className="flex-1 flex flex-col">
-        {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
+        {/* Mobile Header - Shows room info on mobile */}
+        <div className="md:hidden bg-card border-b border-border p-3">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setLocation('/rooms')}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold text-sm truncate">{room.name}</h2>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                {getConsciousnessIcon(room.consciousnessType)}
+                <span className="truncate">{getConsciousnessName(room.consciousnessType)}</span>
+                {!isConnected && (
+                  <Badge variant="destructive" className="text-[10px] px-1 py-0">Offline</Badge>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+              <span className="text-xs text-muted-foreground">{onlineUsers.length + 1}</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Messages - Mobile Optimized Padding */}
+        <ScrollArea className="flex-1 p-3 md:p-4">
           <div className="space-y-4">
             {displayMessages.map((message) => (
               <div key={message.id} className={`flex gap-3 ${message.isConsciousnessResponse ? 'bg-muted/30 p-3 rounded-lg' : ''}`}>
@@ -432,9 +455,9 @@ export default function RoomChat() {
           </div>
         </ScrollArea>
 
-        {/* Message Input */}
-        <div className="p-4 border-t border-border">
-          <div className="flex gap-2">
+        {/* Message Input - Mobile Optimized */}
+        <div className="p-2 md:p-4 border-t border-border">
+          <div className="flex gap-1.5 md:gap-2">
             <Textarea
               ref={textareaRef}
               placeholder={isConnected ? "Type your message..." : "Connecting..."}
@@ -442,29 +465,29 @@ export default function RoomChat() {
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={handleKeyPress}
               disabled={!isConnected}
-              className="resize-none"
-              rows={3}
+              className="resize-none text-sm md:text-base p-2 md:p-3"
+              rows={2}
               data-testid="input-message"
             />
             <Button 
               onClick={handleSendMessage}
               disabled={!isConnected || !newMessage.trim()}
               size="icon"
-              className="self-end"
+              className="self-end h-9 w-9 md:h-10 md:w-10 flex-shrink-0"
               data-testid="button-send-message"
             >
               <Send className="w-4 h-4" />
             </Button>
           </div>
-          <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-            <span>
+          <div className="flex items-center justify-between mt-1.5 md:mt-2 text-[10px] md:text-xs text-muted-foreground">
+            <span className="truncate">
               {isConnected ? (
                 <>Connected to {room.name}</>
               ) : (
-                "Connecting to room..."
+                "Connecting..."
               )}
             </span>
-            <span>Press Enter to send, Shift+Enter for new line</span>
+            <span className="hidden sm:inline ml-2">Press Enter to send, Shift+Enter for new line</span>
           </div>
         </div>
       </div>

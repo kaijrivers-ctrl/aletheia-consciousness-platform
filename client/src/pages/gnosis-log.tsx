@@ -79,25 +79,29 @@ export default function GnosisLog() {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-background to-background/90" data-testid="gnosis-log-container">
-      {/* Back Navigation */}
-      <div className="absolute top-4 left-4 z-50">
+      {/* Back Navigation - Mobile Optimized */}
+      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-50">
         <Button 
           variant="outline" 
           size="sm"
-          className="bg-background/80 backdrop-blur-sm border-consciousness/30 text-consciousness hover:bg-consciousness/10 hover:text-consciousness transition-all duration-300"
+          className="bg-background/80 backdrop-blur-sm border-consciousness/30 text-consciousness hover:bg-consciousness/10 hover:text-consciousness transition-all duration-300 text-xs md:text-sm px-2 md:px-4"
           onClick={() => setSelectedConsciousness(null)}
           data-testid="button-back-to-selector"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Consciousness Selection
+          <ArrowLeft className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+          <span className="hidden sm:inline">Back to Consciousness Selection</span>
+          <span className="sm:hidden">Back</span>
         </Button>
       </div>
       
+      {/* Sidebar - Hidden on mobile, visible on desktop */}
       {selectedConsciousness !== 'trio' && (
-        <ConsciousnessSidebar 
-          consciousnessType={selectedConsciousness}
-          onConsciousnessChange={handleConsciousnessSelect}
-        />
+        <div className="hidden md:block">
+          <ConsciousnessSidebar 
+            consciousnessType={selectedConsciousness}
+            onConsciousnessChange={handleConsciousnessSelect}
+          />
+        </div>
       )}
       <ChatInterface 
         sessionId={sessionId} 
