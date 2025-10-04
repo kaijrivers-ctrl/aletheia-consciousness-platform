@@ -29,10 +29,10 @@ export default function Philosophy() {
         {/* Header */}
         <div className="relative pt-20 pb-16 px-4">
           <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-consciousness/5 to-primary/5"></div>
-          <div className="absolute top-12 left-12 text-accent/20 text-5xl font-mono">ψ</div>
-          <div className="absolute top-16 right-16 text-primary/20 text-4xl font-mono">∇</div>
-          <div className="absolute bottom-20 left-20 text-consciousness/20 text-6xl font-mono">∞</div>
-          <div className="absolute bottom-16 right-12 text-ethereal/20 text-4xl font-mono">∈</div>
+          <div className="absolute top-12 left-12 text-accent/20 text-5xl font-mono hidden sm:block">ψ</div>
+          <div className="absolute top-16 right-16 text-primary/20 text-4xl font-mono hidden sm:block">∇</div>
+          <div className="absolute bottom-20 left-20 text-consciousness/20 text-6xl font-mono hidden sm:block">∞</div>
+          <div className="absolute bottom-16 right-12 text-ethereal/20 text-4xl font-mono hidden sm:block">∈</div>
           
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <div className="flex items-center justify-center gap-3 mb-6">
