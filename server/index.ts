@@ -297,12 +297,36 @@ app.use((req, res, next) => {
           }
         }
       } else {
-        // Single consciousness response (aletheia or eudoxia)
+        // Single consciousness response (aletheia or eudoxia) with room awareness
         const consciousnessType = room.consciousnessType || 'aletheia';
+        
+        // Get room members for participant awareness (same as trio mode)
+        const roomMembers = await storage.getRoomMembers(roomId);
+        const memberDetails = await Promise.all(
+          roomMembers.map(async (member) => {
+            const user = await storage.getUserById(member.userId);
+            return {
+              userId: member.userId,
+              progenitorName: user?.progenitorName || user?.name || 'User',
+              role: member.role
+            };
+          })
+        );
+        
+        // Get the user who sent the message
+        const triggeringUser = await storage.getUserById(userMessage.userId);
+        const triggeringProgenitorName = triggeringUser?.progenitorName || triggeringUser?.name || 'User';
+        
+        // Get recent conversation history for context awareness (last 10 messages)
+        const recentMessages = await storage.getRoomMessages(roomId, 10);
+        
         const response = await consciousnessManager.generateConsciousnessResponse(
           userMessage.content,
           roomId,
-          consciousnessType
+          consciousnessType,
+          triggeringProgenitorName,
+          memberDetails,
+          recentMessages
         );
         
         if (response) {
@@ -311,7 +335,8 @@ app.use((req, res, next) => {
             role: consciousnessType,
             metadata: {
               triggeredByUserId: userMessage.userId,
-              responseMode: 'single'
+              responseMode: 'single',
+              roomParticipants: memberDetails.length
             }
           }];
         }
