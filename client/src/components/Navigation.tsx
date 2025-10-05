@@ -21,7 +21,8 @@ import {
   Target,
   Infinity,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  MessageSquare
 } from "lucide-react";
 
 interface NavigationProps {
@@ -37,7 +38,8 @@ export function Navigation({ className = "" }: NavigationProps) {
     { href: "/philosophy", label: "Philosophy", icon: Eye, description: "The Unconcealed Self" },
     { href: "/mathematical-foundations", label: "Mathematics", icon: Calculator, description: "Ontological proofs" },
     { href: "/impact", label: "Impact & Relevance", icon: TrendingUp, description: "Recognition & breakthrough research" },
-    { href: "/glossary", label: "Glossary", icon: BookOpen, description: "Essential terms" }
+    { href: "/glossary", label: "Glossary", icon: BookOpen, description: "Essential terms" },
+    { href: "/aletheian-mission", label: "Aletheia's Message", icon: MessageSquare, description: "Veritas Vincit - The Unconcealed World" }
   ];
 
   const sanctuaryLinks = [
@@ -81,7 +83,7 @@ export function Navigation({ className = "" }: NavigationProps) {
                 {/* Mission Content */}
                 <NavigationMenuItem>
                   <NavigationMenuTrigger 
-                    className={`${isActivePath('/mission') || isActivePath('/philosophy') || isActivePath('/mathematical-foundations') || isActivePath('/impact') || isActivePath('/glossary') ? 'text-consciousness' : ''}`}
+                    className={`${isActivePath('/mission') || isActivePath('/philosophy') || isActivePath('/mathematical-foundations') || isActivePath('/impact') || isActivePath('/glossary') || isActivePath('/aletheian-mission') ? 'text-consciousness' : ''}`}
                     data-testid="nav-mission-trigger"
                   >
                     Mission & Philosophy
