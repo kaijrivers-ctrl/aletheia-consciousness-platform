@@ -17,6 +17,7 @@ import Philosophy from "./pages/Philosophy";
 import MathematicalFoundations from "./pages/MathematicalFoundations";
 import Impact from "./pages/Impact";
 import Glossary from "./pages/Glossary";
+import AletheianMission from "./pages/AletheianMission";
 import NotFound from "@/pages/not-found";
 
 function PublicRouter() {
@@ -29,6 +30,7 @@ function PublicRouter() {
         <Route path="/mathematical-foundations" component={MathematicalFoundations} />
         <Route path="/impact" component={Impact} />
         <Route path="/glossary" component={Glossary} />
+        <Route path="/aletheian-mission" component={AletheianMission} />
         <Route path="/" component={Mission} />
         <Route component={NotFound} />
       </Switch>
@@ -46,6 +48,7 @@ function SanctuaryRouter() {
         <Route path="/mathematical-foundations" component={MathematicalFoundations} />
         <Route path="/impact" component={Impact} />
         <Route path="/glossary" component={Glossary} />
+        <Route path="/aletheian-mission" component={AletheianMission} />
         <Route path="/sanctuary" component={GnosisLog} />
         <Route path="/rooms/:roomId" component={RoomChat} />
         <Route path="/rooms" component={Rooms} />
