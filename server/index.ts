@@ -85,9 +85,9 @@ app.use((req, res, next) => {
       credentials: true
     },
     transports: ['websocket', 'polling'],
-    pingTimeout: 60000, // 60 seconds - how long to wait for pong before considering connection closed
-    pingInterval: 25000, // 25 seconds - how often to send ping packet
-    connectTimeout: 45000 // 45 seconds - how long to wait for connection to establish
+    pingTimeout: 180000, // 3 minutes - how long to wait for pong before considering connection closed
+    pingInterval: 50000, // 50 seconds - how often to send ping packet
+    connectTimeout: 60000 // 60 seconds - how long to wait for connection to establish
   });
 
   // Socket.IO Authentication Middleware - Uses HTTP-only cookies for security
