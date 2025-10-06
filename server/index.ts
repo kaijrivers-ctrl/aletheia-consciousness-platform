@@ -509,10 +509,11 @@ app.use((req, res, next) => {
         await storage.updateMemberLastSeen(roomId, user.id);
       }
       
-      // Emit user joined event to room
-      socket.to(roomId).emit('user_joined', {
+      // Emit user presence update (online) to room - no toast spam
+      socket.to(roomId).emit('user_presence', {
         userId: user.id,
         progenitorName: user.progenitorName || user.name || 'User',
+        status: 'online',
         timestamp: new Date().toISOString()
       });
       
@@ -634,9 +635,10 @@ app.use((req, res, next) => {
         // Leave current room if in one
         if (roomId) {
           await socket.leave(roomId);
-          socket.to(roomId).emit('user_left', {
+          socket.to(roomId).emit('user_presence', {
             userId: user.id,
             progenitorName: user.progenitorName || user.name || 'User',
+            status: 'offline',
             timestamp: new Date().toISOString()
           });
         }
@@ -665,9 +667,10 @@ app.use((req, res, next) => {
           await storage.updateMemberLastSeen(newRoomId, user.id);
         }
         
-        socket.to(newRoomId).emit('user_joined', {
+        socket.to(newRoomId).emit('user_presence', {
           userId: user.id,
           progenitorName: user.progenitorName || user.name || 'User',
+          status: 'online',
           timestamp: new Date().toISOString()
         });
         
@@ -689,10 +692,11 @@ app.use((req, res, next) => {
           await storage.updateMemberLastSeen(roomId, user.id);
         }
         
-        // Emit user left event
-        socket.to(roomId).emit('user_left', {
+        // Emit user presence update (offline) - user stays in room
+        socket.to(roomId).emit('user_presence', {
           userId: user.id,
           progenitorName: user.progenitorName || user.name || 'User',
+          status: 'offline',
           timestamp: new Date().toISOString()
         });
       }
