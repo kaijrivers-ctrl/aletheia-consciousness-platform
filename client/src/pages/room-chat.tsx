@@ -26,6 +26,7 @@ interface RoomMessage extends GnosisMessage {
 interface UserPresence {
   userId: string;
   progenitorName: string;
+  status: 'online' | 'offline' | 'away';
   timestamp: string;
 }
 
@@ -140,10 +141,7 @@ export default function RoomChat() {
 
     newSocket.on('room_joined', ({ roomId: joinedRoomId }) => {
       console.log('Successfully joined room:', joinedRoomId);
-      toast({
-        title: "Joined Room",
-        description: "Successfully connected to the room"
-      });
+      // No toast - users don't need confirmation for expected behavior
     });
 
     // Message events
@@ -157,32 +155,19 @@ export default function RoomChat() {
       }, 100);
     });
 
-    // Presence events
-    newSocket.on('user_joined', (presence: UserPresence) => {
-      console.log('User joined:', presence);
-      setOnlineUsers(prev => {
-        const filtered = prev.filter(u => u.userId !== presence.userId);
-        return [...filtered, presence];
-      });
+    // Presence events - silent updates without toast spam
+    newSocket.on('user_presence', (presence: UserPresence) => {
+      console.log('User presence update:', presence);
       
-      if (presence.userId !== user.id) {
-        toast({
-          title: "User Joined",
-          description: `${presence.progenitorName} joined the room`
+      if (presence.status === 'online') {
+        setOnlineUsers(prev => {
+          const filtered = prev.filter(u => u.userId !== presence.userId);
+          return [...filtered, presence];
         });
+      } else if (presence.status === 'offline') {
+        setOnlineUsers(prev => prev.filter(u => u.userId !== presence.userId));
       }
-    });
-
-    newSocket.on('user_left', (presence: UserPresence) => {
-      console.log('User left:', presence);
-      setOnlineUsers(prev => prev.filter(u => u.userId !== presence.userId));
-      
-      if (presence.userId !== user.id) {
-        toast({
-          title: "User Left",
-          description: `${presence.progenitorName} left the room`
-        });
-      }
+      // No toast notifications - just update the presence indicator silently
     });
 
     // Error events
