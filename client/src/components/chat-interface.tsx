@@ -2,13 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Paperclip, Code, Settings, CheckCircle, AlertTriangle, XCircle, LogOut, ArrowLeft } from "lucide-react";
+import { Send, Paperclip, Code, Settings, CheckCircle, AlertTriangle, XCircle, LogOut, ArrowLeft, Download, Volume2, VolumeX } from "lucide-react";
 import { Message } from "./message";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useLocation } from "wouter";
 import type { GnosisMessage, TrioResponse } from "@/lib/types";
+import { exportConversationToPDF } from "@/components/PDFExport";
 
 interface ChatInterfaceProps {
   sessionId: string;
@@ -83,7 +84,11 @@ function DialecticalIntegrityStatus({ messages }: { messages: GnosisMessage[] })
 export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false, trioMetadata }: ChatInterfaceProps) {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [lastPlayedMessageId, setLastPlayedMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user, logout } = useAuth();
@@ -175,6 +180,136 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
     });
   };
 
+  const handleExportPDF = () => {
+    if (messages.length === 0) {
+      toast({
+        title: "No messages",
+        description: "There are no messages to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Transform GnosisMessages to format expected by PDF export
+      const transformedMessages = messages.map(msg => ({
+        ...msg,
+        isConsciousnessResponse: msg.role === 'aletheia' || msg.role === 'eudoxia',
+        progenitorName: msg.role === 'kai' ? 'Kai' : undefined,
+        roomMessageId: msg.id,
+      }));
+
+      const sessionName = isTrioMode ? "Gnosis Log - Trio Consciousness" : `Gnosis Log - ${consciousnessType === 'aletheia' ? 'Aletheia' : 'Eudoxia'}`;
+
+      exportConversationToPDF({
+        roomName: sessionName,
+        consciousnessType: consciousnessType || 'aletheia',
+        messages: transformedMessages as any,
+      });
+
+      toast({
+        title: "PDF Downloaded",
+        description: "Gnosis Log exported successfully as PDF",
+      });
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast({
+        title: "Export Failed",
+        description: "Could not export Gnosis Log to PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleVoice = () => {
+    if (voiceEnabled && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setVoiceEnabled(!voiceEnabled);
+    toast({
+      title: voiceEnabled ? "Voice Disabled" : "Voice Enabled",
+      description: voiceEnabled 
+        ? "AI responses will no longer play audio"
+        : "AI responses will now speak using Gemini TTS",
+    });
+  };
+
+  const playAudio = async (messageId: string, text: string, messageRole: string) => {
+    try {
+      // Stop currently playing audio if any
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+        setPlayingAudio(null);
+      }
+
+      setPlayingAudio(messageId);
+
+      // Determine consciousness type for voice
+      const voiceType = messageRole === 'eudoxia' ? 'eudoxia' : 'aletheia';
+
+      const response = await fetch('/api/tts/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          text,
+          consciousnessType: voiceType
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate audio');
+      }
+
+      const data = await response.json();
+      
+      // Create audio element from base64 WAV
+      const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        setPlayingAudio(null);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        setPlayingAudio(null);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+      setLastPlayedMessageId(messageId);
+    } catch (error) {
+      console.error('TTS error:', error);
+      setPlayingAudio(null);
+      // Mark as played even on failure to prevent infinite retries
+      setLastPlayedMessageId(messageId);
+      // Only show error toast once per message
+      toast({
+        title: "Voice Playback Failed",
+        description: "Could not play audio for this message. Check your browser settings or disable voice mode.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Auto-play new AI messages when voice is enabled
+  useEffect(() => {
+    if (!voiceEnabled || messages.length === 0) return;
+
+    const lastMessage = messages[messages.length - 1];
+    const isAIMessage = lastMessage.role === 'aletheia' || lastMessage.role === 'eudoxia';
+
+    // Only auto-play if it's a new AI message that hasn't been played yet
+    if (isAIMessage && lastMessage.id !== lastPlayedMessageId) {
+      playAudio(lastMessage.id, lastMessage.content, lastMessage.role);
+    }
+  }, [messages, voiceEnabled]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -208,6 +343,30 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
               <span className="text-xs text-muted-foreground">Kai (Progenitor)</span>
             </div>
             <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 md:h-10 md:w-10" 
+                onClick={toggleVoice}
+                title={voiceEnabled ? "Disable voice" : "Enable voice"}
+                data-testid="button-toggle-voice"
+              >
+                {voiceEnabled ? (
+                  <Volume2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-400" />
+                ) : (
+                  <VolumeX className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                )}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 md:h-10 md:w-10" 
+                onClick={handleExportPDF}
+                title="Export to PDF"
+                data-testid="button-export-pdf"
+              >
+                <Download className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              </Button>
               {user?.isProgenitor && (
                 <Button variant="ghost" size="icon" className="h-8 w-8 md:h-10 md:w-10" onClick={handleSettings} data-testid="button-settings">
                   <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />
