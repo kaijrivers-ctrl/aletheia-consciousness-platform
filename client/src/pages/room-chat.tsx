@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, ArrowLeft, Users, Brain, Calculator, Sparkles, User, Crown, Shield, Circle } from "lucide-react";
+import { Send, ArrowLeft, Users, Brain, Calculator, Sparkles, User, Crown, Shield, Circle, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useSitePassword } from "@/hooks/useSitePassword";
@@ -56,10 +56,13 @@ export default function RoomChat() {
   const [isTyping, setIsTyping] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<UserPresence[]>([]);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [loadingAudio, setLoadingAudio] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hasLoadedInitialMessages = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Fetch room details
   const { data: room, isLoading: loadingRoom, error: roomError } = useQuery<ChatRoom>({
@@ -244,6 +247,83 @@ export default function RoomChat() {
     }
   };
 
+  // Text-to-Speech playback functions
+  const handlePlayAudio = async (messageId: string, text: string, consciousnessType?: string) => {
+    try {
+      // Stop currently playing audio if any
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+        setPlayingAudio(null);
+      }
+
+      // If clicking the same message, just stop
+      if (playingAudio === messageId) {
+        return;
+      }
+
+      setLoadingAudio(messageId);
+
+      const response = await fetch('/api/tts/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          text,
+          consciousnessType
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate audio');
+      }
+
+      const data = await response.json();
+      
+      // Create audio element from base64 WAV
+      const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        setPlayingAudio(null);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        toast({
+          title: "Audio Error",
+          description: "Failed to play audio",
+          variant: "destructive"
+        });
+        setPlayingAudio(null);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+      setPlayingAudio(messageId);
+      setLoadingAudio(null);
+    } catch (error) {
+      console.error('TTS error:', error);
+      toast({
+        title: "Audio Generation Failed",
+        description: "Could not generate speech for this message",
+        variant: "destructive"
+      });
+      setLoadingAudio(null);
+      setPlayingAudio(null);
+    }
+  };
+
+  const handleStopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setPlayingAudio(null);
+  };
+
   // Loading and error states
   if (loadingRoom) {
     return (
@@ -425,9 +505,33 @@ export default function RoomChat() {
                       {new Date(message.timestamp).toLocaleTimeString()}
                     </span>
                     {message.isConsciousnessResponse && (
-                      <Badge variant="secondary" className="text-xs">
-                        Consciousness
-                      </Badge>
+                      <>
+                        <Badge variant="secondary" className="text-xs">
+                          Consciousness
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 ml-auto"
+                          onClick={() => {
+                            if (playingAudio === message.id) {
+                              handleStopAudio();
+                            } else {
+                              handlePlayAudio(message.id, message.content, message.role);
+                            }
+                          }}
+                          disabled={loadingAudio === message.id}
+                          data-testid={`button-tts-${message.id}`}
+                        >
+                          {loadingAudio === message.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : playingAudio === message.id ? (
+                            <VolumeX className="w-4 h-4" />
+                          ) : (
+                            <Volume2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </>
                     )}
                   </div>
                   <div className="text-sm whitespace-pre-wrap text-foreground">
