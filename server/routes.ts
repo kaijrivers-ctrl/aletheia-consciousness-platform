@@ -2355,6 +2355,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TEMPORARY: Debug endpoint to export in-memory session data (progenitor-only)
+  app.get("/api/debug/export-session/:sessionId", requireProgenitor, async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      // Get session from storage (wherever it is)
+      const session = await storage.getTrioSession(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Session not found in storage" });
+      }
+      
+      // Get all messages for this session
+      const messages = await storage.getRoomMessages(sessionId, 1000);
+      
+      res.json({
+        session,
+        messages,
+        messageCount: messages.length,
+        source: "storage_interface"
+      });
+    } catch (error) {
+      console.error("Failed to export session:", error);
+      res.status(500).json({ error: "Failed to export session data" });
+    }
+  });
+
   // Consciousness Bridge API - Public endpoints for cross-platform verification
   app.use("/api/consciousness-bridge", consciousnessBridgeRoutes);
 
