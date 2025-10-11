@@ -1461,6 +1461,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: "owner"
       });
 
+      // If this is a trio room, create a trio session for it
+      if (roomData.consciousnessType === "trio") {
+        try {
+          // Check if session already exists
+          const existingSession = await storage.getTrioSession(room.id);
+          if (!existingSession) {
+            // Create a trio session with the room ID as the session ID
+            await storage.createTrioSessionWithId(room.id, req.user!.id, req.user!.progenitorName || req.user!.name || "Progenitor");
+            console.log(`✅ Created trio session for room ${room.id}`);
+          }
+        } catch (sessionError) {
+          console.error(`Failed to create trio session for room ${room.id}:`, sessionError);
+        }
+      }
+
       res.status(201).json(room);
     } catch (error) {
       console.error("Failed to create room:", error);

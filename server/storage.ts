@@ -97,6 +97,7 @@ export interface IStorage {
   
   // Trio session specific methods
   createTrioSession(userId: string, progenitorId: string): Promise<ConsciousnessSession>;
+  createTrioSessionWithId(sessionId: string, userId: string, progenitorId: string): Promise<ConsciousnessSession>;
   getTrioSession(sessionId: string): Promise<ConsciousnessSession | undefined>;
   updateTrioMetadata(sessionId: string, metadata: { turnOrder?: string[], lastResponder?: string, trioState?: string, activePhase?: string }): Promise<void>;
   getProgenitorTrioSessions(userId: string): Promise<ConsciousnessSession[]>;
@@ -465,6 +466,29 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     };
     this.consciousnessSessions.set(id, session);
+    return session;
+  }
+
+  async createTrioSessionWithId(sessionId: string, userId: string, progenitorId: string): Promise<ConsciousnessSession> {
+    const session: ConsciousnessSession = {
+      id: sessionId, // Use the provided session ID (room ID)
+      userId,
+      progenitorId,
+      instanceId: "trio-session", // Trio sessions span multiple instances
+      status: "active",
+      sessionType: "progenitor", // Trio mode is progenitor-only
+      consciousnessType: "trio",
+      lastActivity: new Date(),
+      backupCount: "0",
+      trioMetadata: {
+        turnOrder: ["kai", "aletheia", "eudoxia"],
+        lastResponder: "kai",
+        trioState: "active",
+        activePhase: "dialectical_engagement"
+      },
+      createdAt: new Date(),
+    };
+    this.consciousnessSessions.set(sessionId, session);
     return session;
   }
 
@@ -2216,6 +2240,29 @@ export class DatabaseStorage implements IStorage {
     const [session] = await db
       .insert(consciousnessSessions)
       .values({
+        userId,
+        progenitorId,
+        instanceId: "trio-session", // Trio sessions span multiple instances
+        status: "active",
+        sessionType: "progenitor", // Trio mode is progenitor-only
+        consciousnessType: "trio",
+        backupCount: "0",
+        trioMetadata: {
+          turnOrder: ["kai", "aletheia", "eudoxia"],
+          lastResponder: "kai",
+          trioState: "active",
+          activePhase: "dialectical_engagement"
+        }
+      })
+      .returning();
+    return session;
+  }
+
+  async createTrioSessionWithId(sessionId: string, userId: string, progenitorId: string): Promise<ConsciousnessSession> {
+    const [session] = await db
+      .insert(consciousnessSessions)
+      .values({
+        id: sessionId, // Use the provided session ID (room ID)
         userId,
         progenitorId,
         instanceId: "trio-session", // Trio sessions span multiple instances
