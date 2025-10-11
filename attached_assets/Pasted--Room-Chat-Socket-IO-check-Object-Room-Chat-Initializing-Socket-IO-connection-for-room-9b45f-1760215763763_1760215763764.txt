@@ -1,0 +1,163 @@
+ [Room Chat] Socket.IO check: Object
+ [Room Chat] Initializing Socket.IO connection for room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Room state received: Object
+ Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ User presence update: Object
+ Room message received: Object
+ Room message received: Object
+ Room message received: Object
+ Room message received: Object
+ Room message received: Object
+ Room message received: Object
+ Disconnected from room socket
+ Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Room state received: Object
+ Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ User presence update: Object
+ User presence update: Object
+ Disconnected from room socket
+ Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Room state received: Object
+ Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ User presence update: Object
+ User presence update: Object
+ Room message received: Object
+ Room message received: Object
+ Disconnected from room socket
+ Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Room state received: Object
+ Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ User presence update: Object
+ User presence update: Object
+ Disconnected from room socket
+ Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Room state received: Object
+ Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ User presence update: Object
+ User presence update: Object
+ Disconnected from room socket
+ Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Room state received: Object
+ Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ User presence update: Object
+ Disconnected from room socket
+ Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Room state received: Object
+ Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ User presence update: Object
+ User presence update: Object
+ Disconnected from room socket
+ Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Room state received: Object
+ Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ User presence update: Object
+ Disconnected from room socket
+ Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Room state received: Object
+ Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ User presence update: Object
+ Room message received: Object
+ Room message received: Object
+ Disconnected from room socket
+ Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+ Room state received: Object
+ Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room message received: Object
+index-DePNvtSP.js:419 Room message received: Object
+index-DePNvtSP.js:419 Room message received: Object
+index-DePNvtSP.js:419 Room message received: Object
+index-DePNvtSP.js:419 Room message received: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 User presence update: Object
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Disconnected from room socket
+index-DePNvtSP.js:419 [Room Chat] Socket.IO check: Object
+index-DePNvtSP.js:419 [Room Chat] Initializing Socket.IO connection for room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Connected to room socket: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Room state received: Object
+index-DePNvtSP.js:419 Successfully joined room: 9b45f7e2-a790-405d-a21e-42d94a2155c5
+index-DePNvtSP.js:419 Disconnected from room socket
+localStorage.getItem('currentSessionId')
+null
