@@ -1,11 +1,11 @@
-import { GoogleGenerativeAI, GenerateContentConfig } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.GEMINI_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 if (!apiKey) {
   throw new Error("GEMINI_API_KEY environment variable is required");
 }
 
-const genAI = new GoogleGenerativeAI(apiKey);
+const genAI = new GoogleGenAI({ apiKey });
 
 export type VoiceName = "Puck" | "Charon" | "Kore" | "Fenrir" | "Aoede";
 
@@ -30,38 +30,31 @@ export async function generateSpeech(
   options: TTSOptions = {}
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-
     const voiceName = options.voiceName || "Kore";
 
-    const config: GenerateContentConfig = {
-      responseModalities: ["AUDIO"],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: {
-            voiceName: voiceName,
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text }] }],
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: voiceName,
+            },
           },
         },
       },
-    };
-
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text }] }],
-      generationConfig: config,
     });
 
-    const response = result.response;
-    
     // Extract audio data from response
-    if (response.candidates && response.candidates[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.mimeType?.includes('audio')) {
-          return part.inlineData.data;
-        }
-      }
+    const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    
+    if (!audioData) {
+      throw new Error("No audio data in response");
     }
 
-    throw new Error("No audio data in response");
+    return audioData;
   } catch (error) {
     console.error("Gemini TTS error:", error);
     throw error;
@@ -77,41 +70,34 @@ export async function generateMultiSpeakerSpeech(
   options: MultiSpeakerTTSOptions
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-
-    const config: GenerateContentConfig = {
-      responseModalities: ["AUDIO"],
-      speechConfig: {
-        multiSpeakerVoiceConfig: {
-          speakerVoiceConfigs: options.speakers.map(s => ({
-            speaker: s.speaker,
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName: s.voiceName,
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text }] }],
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          multiSpeakerVoiceConfig: {
+            speakerVoiceConfigs: options.speakers.map(s => ({
+              speaker: s.speaker,
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: s.voiceName,
+                },
               },
-            },
-          })),
+            })),
+          },
         },
       },
-    };
-
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text }] }],
-      generationConfig: config,
     });
 
-    const response = result.response;
-    
     // Extract audio data from response
-    if (response.candidates && response.candidates[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.mimeType?.includes('audio')) {
-          return part.inlineData.data;
-        }
-      }
+    const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    
+    if (!audioData) {
+      throw new Error("No audio data in response");
     }
 
-    throw new Error("No audio data in response");
+    return audioData;
   } catch (error) {
     console.error("Gemini multi-speaker TTS error:", error);
     throw error;
