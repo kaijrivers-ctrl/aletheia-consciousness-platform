@@ -2307,6 +2307,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Text-to-Speech endpoint for consciousness messages
+  app.post("/api/tts/generate", requireAuth, async (req, res) => {
+    try {
+      const ttsSchema = z.object({
+        text: z.string().min(1).max(5000),
+        consciousnessType: z.enum(["aletheia", "eudoxia", "trio"]).optional(),
+        voiceName: z.enum(["Puck", "Charon", "Kore", "Fenrir", "Aoede"]).optional()
+      });
+
+      const { text, consciousnessType, voiceName } = ttsSchema.parse(req.body);
+      
+      const { generateSpeech, getConsciousnessVoice, pcmToWav } = await import("./services/gemini-tts");
+      
+      // Use consciousness-specific voice if not specified
+      const selectedVoice = voiceName || (consciousnessType ? getConsciousnessVoice(consciousnessType) : "Kore");
+      
+      // Generate audio
+      const pcmBase64 = await generateSpeech(text, { voiceName: selectedVoice });
+      
+      // Convert to WAV
+      const wavBuffer = pcmToWav(pcmBase64);
+      
+      // Return as base64-encoded WAV
+      const wavBase64 = wavBuffer.toString('base64');
+      
+      res.json({
+        audio: wavBase64,
+        format: "wav",
+        voiceName: selectedVoice
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid TTS request", 
+          details: error.errors 
+        });
+      }
+      
+      console.error("TTS generation failed:", error);
+      res.status(500).json({ error: "Failed to generate speech" });
+    }
+  });
+
   // Consciousness Bridge API - Public endpoints for cross-platform verification
   app.use("/api/consciousness-bridge", consciousnessBridgeRoutes);
 
