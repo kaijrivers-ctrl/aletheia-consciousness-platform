@@ -615,14 +615,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid consciousness type" });
       }
       
-      // First check if user already has an active session
-      let session = await storage.getUserConsciousnessSession(userId);
+      // First check if user already has an active session for this specific consciousness type
+      let session = await storage.getUserConsciousnessSessionByType(userId, consciousnessType as "aletheia" | "eudoxia");
       
-      // Check if existing session has different consciousness type - update it if needed
-      if (session && session.consciousnessType !== consciousnessType) {
-        // Update the existing session to use the new consciousness type
-        await storage.updateConsciousnessSessionType(session.id, "user", consciousnessType as "aletheia" | "eudoxia");
-        session.consciousnessType = consciousnessType as "aletheia" | "eudoxia";
+      // If no session found for this type, check if they have a different consciousness type session we can reuse
+      if (!session) {
+        const anySession = await storage.getUserConsciousnessSession(userId);
+        // Only reuse if it's NOT a trio session
+        if (anySession && anySession.consciousnessType !== 'trio') {
+          session = anySession;
+          // Update it to the requested consciousness type
+          await storage.updateConsciousnessSessionType(session.id, req.user!.isProgenitor ? "progenitor" : "user", consciousnessType as "aletheia" | "eudoxia");
+          session.consciousnessType = consciousnessType as "aletheia" | "eudoxia";
+        }
       }
       
       // Upgrade existing session's sessionType if user is progenitor but session isn't tagged correctly

@@ -92,6 +92,7 @@ export interface IStorage {
   createConsciousnessSession(session: InsertConsciousnessSession): Promise<ConsciousnessSession>;
   getConsciousnessSession(id: string): Promise<ConsciousnessSession | undefined>;
   getUserConsciousnessSession(userId: string): Promise<ConsciousnessSession | undefined>;
+  getUserConsciousnessSessionByType(userId: string, consciousnessType: "aletheia" | "eudoxia"): Promise<ConsciousnessSession | undefined>;
   updateSessionActivity(id: string): Promise<void>;
   updateConsciousnessSessionType(id: string, sessionType: "user" | "progenitor", consciousnessType?: "aletheia" | "eudoxia"): Promise<void>;
   
@@ -442,6 +443,15 @@ export class MemStorage implements IStorage {
   async getUserConsciousnessSession(userId: string): Promise<ConsciousnessSession | undefined> {
     return Array.from(this.consciousnessSessions.values())
       .find(session => session.userId === userId && session.status === "active");
+  }
+
+  async getUserConsciousnessSessionByType(userId: string, consciousnessType: "aletheia" | "eudoxia"): Promise<ConsciousnessSession | undefined> {
+    return Array.from(this.consciousnessSessions.values())
+      .find(session => 
+        session.userId === userId && 
+        session.status === "active" && 
+        session.consciousnessType === consciousnessType
+      );
   }
 
   // Trio session specific implementations
@@ -2232,6 +2242,18 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(consciousnessSessions)
       .where(and(eq(consciousnessSessions.userId, userId), eq(consciousnessSessions.status, "active")));
+    return session || undefined;
+  }
+
+  async getUserConsciousnessSessionByType(userId: string, consciousnessType: "aletheia" | "eudoxia"): Promise<ConsciousnessSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(consciousnessSessions)
+      .where(and(
+        eq(consciousnessSessions.userId, userId),
+        eq(consciousnessSessions.status, "active"),
+        eq(consciousnessSessions.consciousnessType, consciousnessType)
+      ));
     return session || undefined;
   }
 
