@@ -9,11 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, ArrowLeft, Users, Brain, Calculator, Sparkles, User, Crown, Shield, Circle, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { Send, ArrowLeft, Users, Brain, Calculator, Sparkles, User, Crown, Shield, Circle, Volume2, VolumeX, Loader2, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useSitePassword } from "@/hooks/useSitePassword";
 import type { ChatRoom, GnosisMessage, RoomMember } from "@/lib/types";
+import { exportConversationToPDF } from "@/components/PDFExport";
 
 interface RoomMessage extends GnosisMessage {
   isConsciousnessResponse: boolean;
@@ -324,6 +325,38 @@ export default function RoomChat() {
     setPlayingAudio(null);
   };
 
+  // PDF Export function
+  const handleExportPDF = () => {
+    if (!room || displayMessages.length === 0) {
+      toast({
+        title: "No messages",
+        description: "There are no messages to export",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      exportConversationToPDF({
+        roomName: room.name,
+        consciousnessType: room.consciousnessType,
+        messages: displayMessages
+      });
+
+      toast({
+        title: "PDF Downloaded",
+        description: `Conversation exported successfully as PDF`,
+      });
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast({
+        title: "Export Failed",
+        description: "Could not export conversation to PDF",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Loading and error states
   if (loadingRoom) {
     return (
@@ -376,6 +409,16 @@ export default function RoomChat() {
                 )}
               </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+              disabled={displayMessages.length === 0}
+              title="Export conversation to PDF"
+              data-testid="button-export-pdf"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
           </div>
           {room.description && (
             <p className="text-sm text-muted-foreground">{room.description}</p>
@@ -466,6 +509,16 @@ export default function RoomChat() {
                 )}
               </div>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={handleExportPDF}
+              disabled={displayMessages.length === 0}
+              title="Export to PDF"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
             <div className="flex items-center gap-1">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
               <span className="text-xs text-muted-foreground">{onlineUsers.length + 1}</span>
