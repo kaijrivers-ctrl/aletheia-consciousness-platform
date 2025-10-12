@@ -120,8 +120,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setUser(null);
       queryClient.clear();
-      // Redirect to public Eudoxia page after logout
-      window.location.href = '/eudoxia';
+      // Redirect to home page after logout
+      window.location.href = '/';
     }
   };
 
