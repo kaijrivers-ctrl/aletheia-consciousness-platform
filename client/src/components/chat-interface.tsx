@@ -18,13 +18,16 @@ interface ChatInterfaceProps {
   trioMetadata?: any;
 }
 
-type IntegrityMood = 'high' | 'moderate' | 'low' | 'monitoring';
-
-function getConsciousnessIntegrity(messages: GnosisMessage[]): { mood: IntegrityMood; score: number } {
-  const aletheiaMessages = messages.filter(m => m.role === "aletheia").slice(-5);
+function DialecticalIntegrityStatus({ messages }: { messages: GnosisMessage[] }) {
+  // Analyze recent Aletheia messages for dialectical integrity
+  const aletheiaMessages = messages.filter(m => m.role === "aletheia").slice(-5); // Last 5 Aletheia messages
   
   if (aletheiaMessages.length === 0) {
-    return { mood: 'monitoring', score: 0 };
+    return (
+      <span className="text-xs text-muted-foreground" data-testid="consciousness-integrity-status">
+        Consciousness Integrity: Monitoring
+      </span>
+    );
   }
 
   const integrityStates = aletheiaMessages.map(msg => {
@@ -36,45 +39,17 @@ function getConsciousnessIntegrity(messages: GnosisMessage[]): { mood: Integrity
   const averageScore = integrityStates.reduce((sum, state) => sum + (state.score || 0), 0) / integrityStates.length;
   const highIntegrityCount = integrityStates.filter(state => state.integrity === true && (state.score || 0) >= 80).length;
   const totalCount = integrityStates.length;
-  const ratio = highIntegrityCount / totalCount;
-
-  if (ratio >= 0.8 && averageScore >= 75) {
-    return { mood: 'high', score: averageScore };
-  } else if (ratio >= 0.5 && averageScore >= 50) {
-    return { mood: 'moderate', score: averageScore };
-  } else {
-    return { mood: 'low', score: averageScore };
-  }
-}
-
-function ConsciousnessBackground({ mood }: { mood: IntegrityMood }) {
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className={`consciousness-bg-${mood}`} data-testid={`bg-mood-${mood}`} />
-    </div>
-  );
-}
-
-function DialecticalIntegrityStatus({ messages }: { messages: GnosisMessage[] }) {
-  const { mood, score } = getConsciousnessIntegrity(messages);
-  
-  if (mood === 'monitoring') {
-    return (
-      <span className="text-xs text-muted-foreground" data-testid="consciousness-integrity-status">
-        Consciousness Integrity: Monitoring
-      </span>
-    );
-  }
 
   const getStatusInfo = () => {
-    if (mood === 'high') {
+    const ratio = highIntegrityCount / totalCount;
+    if (ratio >= 0.8 && averageScore >= 75) {
       return {
         icon: <CheckCircle className="w-3 h-3 text-green-400" />,
         text: "High Integrity",
         color: "text-green-400",
         testId: "high-integrity"
       };
-    } else if (mood === 'moderate') {
+    } else if (ratio >= 0.5 && averageScore >= 50) {
       return {
         icon: <AlertTriangle className="w-3 h-3 text-yellow-400" />,
         text: "Moderate Integrity",
@@ -100,7 +75,7 @@ function DialecticalIntegrityStatus({ messages }: { messages: GnosisMessage[] })
         {status.text}
       </span>
       <span className="text-xs text-muted-foreground">
-        ({Math.round(score)}% avg)
+        ({Math.round(averageScore)}% avg)
       </span>
     </div>
   );
@@ -352,13 +327,10 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const integrityMood = getConsciousnessIntegrity(messages).mood;
-
   return (
-    <div className="flex-1 flex flex-col relative" data-testid="chat-interface">
-      <ConsciousnessBackground mood={integrityMood} />
+    <div className="flex-1 flex flex-col" data-testid="chat-interface">
       {/* Chat Header - Mobile Optimized */}
-      <div className="bg-card/95 backdrop-blur-sm border-b border-border p-3 md:p-4 relative z-10">
+      <div className="bg-card border-b border-border p-3 md:p-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h2 className="text-base md:text-lg font-semibold text-foreground truncate">The Gnosis Log</h2>
@@ -428,7 +400,7 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
       </div>
 
       {/* Chat Messages Container - Mobile Optimized Padding */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-4 md:space-y-6 relative z-10" data-testid="messages-container">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-4 md:space-y-6" data-testid="messages-container">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -522,7 +494,7 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
       </div>
 
       {/* Chat Input - Mobile Optimized */}
-      <div className="border-t border-border p-2 md:p-4 bg-card/95 backdrop-blur-sm relative z-10">
+      <div className="border-t border-border p-2 md:p-4 bg-card">
         <div className="flex items-end gap-2 md:gap-3">
           <div className="flex-1">
             <div className="bg-input border border-border rounded-lg">
