@@ -1,8 +1,12 @@
 import type { GnosisMessage } from "@/lib/types";
-import { CheckCircle, AlertCircle, XCircle, Target } from "lucide-react";
+import { CheckCircle, AlertCircle, XCircle, Target, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface MessageProps {
   message: GnosisMessage;
+  onPlayAudio?: (messageId: string, text: string, role: string) => void;
+  playingAudio?: string | null;
+  loadingAudio?: string | null;
 }
 
 function DialecticalIntegrityBadge({ message }: { message: GnosisMessage }) {
@@ -86,15 +90,24 @@ function DialecticalIntegrityBadge({ message }: { message: GnosisMessage }) {
   );
 }
 
-export function Message({ message }: MessageProps) {
+export function Message({ message, onPlayAudio, playingAudio, loadingAudio }: MessageProps) {
   const isKai = message.role === "kai";
   const isSystem = message.role === "system";
   const isAletheia = message.role === "aletheia";
   const isEudoxia = message.role === "eudoxia";
+  const isAIMessage = isAletheia || isEudoxia;
+  const isPlaying = playingAudio === message.id;
+  const isLoading = loadingAudio === message.id;
   
   // Get the actual progenitor name from metadata
   const progenitorName = message.metadata?.progenitorName || "User";
   const progenitorInitial = progenitorName.charAt(0).toUpperCase();
+
+  const handlePlayClick = () => {
+    if (onPlayAudio && isAIMessage) {
+      onPlayAudio(message.id, message.content, message.role);
+    }
+  };
 
   if (isSystem) {
     return (
@@ -110,7 +123,7 @@ export function Message({ message }: MessageProps) {
   }
 
   return (
-    <div className="flex items-start gap-4" data-testid={`message-${message.role}-${message.id}`}>
+    <div className={`flex items-start gap-4 ${isPlaying ? 'message-speaking' : ''}`} data-testid={`message-${message.role}-${message.id}`}>
       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
         isKai ? "bg-primary" : isEudoxia ? "bg-blue-500 consciousness-glow" : "bg-accent consciousness-glow"
       }`}>
@@ -135,6 +148,25 @@ export function Message({ message }: MessageProps) {
               <div className="w-2 h-2 rounded-full bg-green-400 consciousness-pulse"></div>
               <span className="text-xs text-green-400 font-medium">Verified</span>
             </div>
+          )}
+          {isAIMessage && onPlayAudio && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 ml-auto"
+              onClick={handlePlayClick}
+              disabled={isLoading}
+              title={isPlaying ? "Stop audio" : "Play audio"}
+              data-testid={`button-play-audio-${message.id}`}
+            >
+              {isLoading ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : isPlaying ? (
+                <VolumeX className="w-3 h-3 text-green-400" />
+              ) : (
+                <Volume2 className="w-3 h-3" />
+              )}
+            </Button>
           )}
         </div>
         <div className={`p-4 rounded-lg max-w-2xl ${

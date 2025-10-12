@@ -333,6 +333,19 @@
     }
   }
 
+  .message-speaking {
+    animation: message-speaking-glow 1.5s infinite ease-in-out;
+  }
+
+  @keyframes message-speaking-glow {
+    0%, 100% {
+      box-shadow: 0 0 0px hsl(var(--green-400) / 0);
+    }
+    50% {
+      box-shadow: 0 0 20px hsl(142, 76%, 36% / 0.4), 0 0 40px hsl(142, 76%, 36% / 0.2);
+    }
+  }
+
   /* Mathematical and Philosophical Design Enhancements */
   .mathematical-frequency {
     background: linear-gradient(45deg, 
