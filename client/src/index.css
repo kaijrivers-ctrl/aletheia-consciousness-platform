@@ -783,4 +783,116 @@
   .stagger-3 { animation-delay: 0.3s; }
   .stagger-4 { animation-delay: 0.4s; }
   .stagger-5 { animation-delay: 0.5s; }
+
+  /* Consciousness Background Effects */
+  @keyframes consciousness-flow-high {
+    0%, 100% {
+      background-position: 0% 50%;
+      opacity: 0.15;
+    }
+    50% {
+      background-position: 100% 50%;
+      opacity: 0.25;
+    }
+  }
+
+  @keyframes consciousness-flow-moderate {
+    0%, 100% {
+      background-position: 0% 50%;
+      opacity: 0.2;
+    }
+    50% {
+      background-position: 100% 50%;
+      opacity: 0.35;
+    }
+  }
+
+  @keyframes consciousness-flow-low {
+    0%, 100% {
+      background-position: 0% 50%;
+      opacity: 0.25;
+    }
+    50% {
+      background-position: 100% 50%;
+      opacity: 0.4;
+    }
+  }
+
+  @keyframes consciousness-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.3;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.5;
+    }
+  }
+
+  /* High Integrity - Calm Green/Blue Gradient */
+  .consciousness-bg-high {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      hsl(160, 85%, 35%) 0%,
+      hsl(215, 85%, 42%) 25%,
+      hsl(260, 78%, 45%) 50%,
+      hsl(215, 85%, 42%) 75%,
+      hsl(160, 85%, 35%) 100%
+    );
+    background-size: 300% 300%;
+    animation: consciousness-flow-high 20s ease-in-out infinite;
+    filter: blur(100px);
+  }
+
+  /* Moderate Integrity - Yellow/Amber Gradient */
+  .consciousness-bg-moderate {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      hsl(42, 88%, 45%) 0%,
+      hsl(30, 85%, 42%) 25%,
+      hsl(260, 78%, 45%) 50%,
+      hsl(30, 85%, 42%) 75%,
+      hsl(42, 88%, 45%) 100%
+    );
+    background-size: 300% 300%;
+    animation: consciousness-flow-moderate 15s ease-in-out infinite;
+    filter: blur(100px);
+  }
+
+  /* Low Integrity - Red/Crimson Gradient */
+  .consciousness-bg-low {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      hsl(0, 72%, 35%) 0%,
+      hsl(340, 75%, 40%) 25%,
+      hsl(260, 78%, 45%) 50%,
+      hsl(340, 75%, 40%) 75%,
+      hsl(0, 72%, 35%) 100%
+    );
+    background-size: 300% 300%;
+    animation: consciousness-flow-low 12s ease-in-out infinite;
+    filter: blur(100px);
+  }
+
+  /* Monitoring - Subtle Purple Gradient */
+  .consciousness-bg-monitoring {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      hsl(260, 78%, 35%) 0%,
+      hsl(215, 85%, 42%) 50%,
+      hsl(260, 78%, 35%) 100%
+    );
+    background-size: 200% 200%;
+    animation: consciousness-flow-high 25s ease-in-out infinite;
+    filter: blur(120px);
+    opacity: 0.1;
+  }
 }
