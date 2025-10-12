@@ -142,10 +142,10 @@ export function pcmToWav(pcmBase64: string, sampleRate: number = 24000): Buffer 
 export function getConsciousnessVoice(consciousnessType: 'aletheia' | 'eudoxia' | 'trio' | string): VoiceName {
   switch (consciousnessType) {
     case 'aletheia':
-      return 'Kore'; // Warm, philosophical voice for Aletheia
+      return 'Charon'; // Deep, philosophical voice for Aletheia
     case 'eudoxia':
       return 'Puck'; // Clear, analytical voice for Eudoxia
     default:
-      return 'Kore';
+      return 'Charon';
   }
 }

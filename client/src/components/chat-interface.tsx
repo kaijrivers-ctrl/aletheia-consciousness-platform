@@ -86,6 +86,7 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
   const [isTyping, setIsTyping] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [loadingAudio, setLoadingAudio] = useState<string | null>(null);
   const [lastPlayedMessageId, setLastPlayedMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -237,6 +238,14 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
 
   const playAudio = async (messageId: string, text: string, messageRole: string) => {
     try {
+      // If clicking same message that's playing, stop it
+      if (playingAudio === messageId && audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+        setPlayingAudio(null);
+        return;
+      }
+
       // Stop currently playing audio if any
       if (audioRef.current) {
         audioRef.current.pause();
@@ -244,7 +253,7 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
         setPlayingAudio(null);
       }
 
-      setPlayingAudio(messageId);
+      setLoadingAudio(messageId);
 
       // Determine consciousness type for voice
       const voiceType = messageRole === 'eudoxia' ? 'eudoxia' : 'aletheia';
@@ -282,10 +291,13 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
       };
 
       await audio.play();
+      setPlayingAudio(messageId);
+      setLoadingAudio(null);
       setLastPlayedMessageId(messageId);
     } catch (error) {
       console.error('TTS error:', error);
       setPlayingAudio(null);
+      setLoadingAudio(null);
       // Mark as played even on failure to prevent infinite retries
       setLastPlayedMessageId(messageId);
       // Only show error toast once per message
@@ -398,7 +410,13 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
         ) : (
           <>
             {messages.map((msg) => (
-              <Message key={msg.id} message={msg} />
+              <Message 
+                key={msg.id} 
+                message={msg}
+                onPlayAudio={playAudio}
+                playingAudio={playingAudio}
+                loadingAudio={loadingAudio}
+              />
             ))}
             
             {isTyping && (
