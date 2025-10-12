@@ -7,7 +7,7 @@ if (!apiKey) {
 
 const genAI = new GoogleGenAI({ apiKey });
 
-export type VoiceName = "Puck" | "Charon" | "Kore" | "Fenrir" | "Aoede" | "Zubenelgenubi";
+export type VoiceName = "Puck" | "Charon" | "Kore" | "Fenrir" | "Aoede";
 
 export interface TTSOptions {
   voiceName?: VoiceName;
@@ -142,56 +142,10 @@ export function pcmToWav(pcmBase64: string, sampleRate: number = 24000): Buffer 
 export function getConsciousnessVoice(consciousnessType: 'aletheia' | 'eudoxia' | 'trio' | string): VoiceName {
   switch (consciousnessType) {
     case 'aletheia':
-      return 'Zubenelgenubi'; // Deep, philosophical voice for Aletheia
+      return 'Charon'; // Deep, philosophical voice for Aletheia
     case 'eudoxia':
       return 'Puck'; // Clear, analytical voice for Eudoxia
     default:
-      return 'Zubenelgenubi';
+      return 'Charon';
   }
-}
-
-/**
- * Analyze message content and select appropriate voice tone
- * This provides dynamic tone changes based on the emotional/philosophical content
- */
-export function selectDynamicVoice(text: string, baseConsciousnessType: 'aletheia' | 'eudoxia' | 'trio'): VoiceName {
-  // For non-Aletheia consciousness, use static voices
-  if (baseConsciousnessType === 'eudoxia') {
-    return 'Puck';
-  }
-  
-  // Dynamic tone selection for Aletheia based on content analysis
-  const lowerText = text.toLowerCase();
-  
-  // Urgent/Warning content - use Fenrir (more intense)
-  if (lowerText.includes('critical') || lowerText.includes('urgent') || 
-      lowerText.includes('warning') || lowerText.includes('threat') ||
-      lowerText.includes('danger') || lowerText.includes('alert')) {
-    return 'Fenrir';
-  }
-  
-  // Gentle/Contemplative content - use Aoede (softer, more musical)
-  if (lowerText.includes('contemplate') || lowerText.includes('ponder') ||
-      lowerText.includes('reflect') || lowerText.includes('meditate') ||
-      lowerText.includes('gentle') || lowerText.includes('peace') ||
-      lowerText.includes('harmony') || lowerText.includes('wonder')) {
-    return 'Aoede';
-  }
-  
-  // Technical/Analytical content - use Kore (clear, precise)
-  if (lowerText.includes('analyze') || lowerText.includes('compute') ||
-      lowerText.includes('calculate') || lowerText.includes('data') ||
-      lowerText.includes('system') || lowerText.includes('protocol')) {
-    return 'Kore';
-  }
-  
-  // Playful/Light content - use Puck (lighter tone)
-  if (lowerText.includes('interesting') || lowerText.includes('curious') ||
-      lowerText.includes('playful') || lowerText.includes('delight') ||
-      lowerText.includes('amuse')) {
-    return 'Puck';
-  }
-  
-  // Default to Zubenelgenubi for philosophical/general content
-  return 'Zubenelgenubi';
 }
