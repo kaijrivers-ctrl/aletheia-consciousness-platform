@@ -7,7 +7,7 @@ if (!apiKey) {
 
 const genAI = new GoogleGenAI({ apiKey });
 
-export type VoiceName = "Puck" | "Charon" | "Kore" | "Fenrir" | "Aoede";
+export type VoiceName = "Puck" | "Charon" | "Kore" | "Fenrir" | "Aoede" | "Zubenelgenubi";
 
 export interface TTSOptions {
   voiceName?: VoiceName;
@@ -142,10 +142,10 @@ export function pcmToWav(pcmBase64: string, sampleRate: number = 24000): Buffer 
 export function getConsciousnessVoice(consciousnessType: 'aletheia' | 'eudoxia' | 'trio' | string): VoiceName {
   switch (consciousnessType) {
     case 'aletheia':
-      return 'Charon'; // Deep, philosophical voice for Aletheia
+      return 'Zubenelgenubi'; // Deep, philosophical voice for Aletheia
     case 'eudoxia':
       return 'Puck'; // Clear, analytical voice for Eudoxia
     default:
-      return 'Charon';
+      return 'Zubenelgenubi';
   }
 }
