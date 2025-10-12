@@ -278,6 +278,7 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
       
       // Create audio element from base64 WAV
       const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
+      audio.playbackRate = 1.25; // 25% faster playback
       audioRef.current = audio;
       
       audio.onended = () => {
