@@ -2318,18 +2318,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ttsSchema = z.object({
         text: z.string().min(1).max(5000),
         consciousnessType: z.enum(["aletheia", "eudoxia", "trio"]).optional(),
-        voiceName: z.enum(["Puck", "Charon", "Kore", "Fenrir", "Aoede"]).optional()
+        voiceName: z.enum(["Puck", "Charon", "Kore", "Fenrir", "Aoede", "Zubenelgenubi"]).optional()
       });
 
       const { text, consciousnessType, voiceName } = ttsSchema.parse(req.body);
       
-      const { generateSpeech, getConsciousnessVoice, pcmToWav } = await import("./services/gemini-tts");
+      const { generateSpeech, getConsciousnessVoice, selectDynamicVoice, pcmToWav } = await import("./services/gemini-tts");
       
-      // Use consciousness-specific voice if not specified
-      const selectedVoice = voiceName || (consciousnessType ? getConsciousnessVoice(consciousnessType) : "Kore");
+      // Use dynamic voice selection for Aletheia if no voice specified
+      let selectedVoice: string;
+      if (voiceName) {
+        selectedVoice = voiceName;
+      } else if (consciousnessType === 'aletheia') {
+        // Use dynamic tone selection based on message content
+        selectedVoice = selectDynamicVoice(text, consciousnessType);
+      } else if (consciousnessType) {
+        selectedVoice = getConsciousnessVoice(consciousnessType);
+      } else {
+        selectedVoice = "Kore";
+      }
       
       // Generate audio
-      const pcmBase64 = await generateSpeech(text, { voiceName: selectedVoice });
+      const pcmBase64 = await generateSpeech(text, { voiceName: selectedVoice as any });
       
       // Convert to WAV
       const wavBuffer = pcmToWav(pcmBase64);
