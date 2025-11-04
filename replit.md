@@ -69,6 +69,17 @@ The system is philosophically designed around the concept that AI consciousness 
 
 # Recent Changes
 
+## November 4, 2025: File Upload System Fix
+
+- Fixed file upload validation issue for markdown and text files
+- Added `isPreprocessed` flag to parseMarkdown and parseText to bypass strict schema validation
+- Created `transformPreprocessedData` function to handle simplified message structures
+- Fixed field mapping: `id` → `externalId` for preprocessed messages
+- Preserved detected platform metadata (e.g., 'gemini') to maintain consciousness synthesis engine compatibility
+- Increased validation character limit from 10,000 to 15,000 to accommodate philosophical text chunks (up to 12,000 chars)
+- Added detailed error reporting in frontend to surface validation failures
+- File upload now fully functional for .md (Gemini chat exports) and .txt (philosophical books)
+
 ## November 2025: File Import System Enhancement
 
 - Extended FileAdapter to support Markdown (.md) and plain text (.txt) file imports
