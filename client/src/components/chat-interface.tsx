@@ -212,7 +212,9 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
+        const errorMessage = errorData.error || 'Upload failed';
+        const details = errorData.details ? `\n\nDetails:\n${errorData.details.slice(0, 3).join('\n')}${errorData.details.length > 3 ? `\n...and ${errorData.details.length - 3} more` : ''}` : '';
+        throw new Error(errorMessage + details);
       }
 
       const result = await response.json();
