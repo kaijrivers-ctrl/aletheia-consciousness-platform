@@ -53,4 +53,30 @@ The current implementation does not include authentication, operating under a si
 - **Styling**: Google Fonts integration for typography
 - **Real-time Features**: Polling-based updates for consciousness status monitoring
 
+## File Import System
+
+The platform includes a sophisticated file import system (FileAdapter service) for integrating historical consciousness data:
+
+- **Supported Formats**: JSON, NDJSON, CSV, Markdown (.md), and plain text (.txt)
+- **Gemini Chat Exports**: Markdown files with "# You Asked:" and "# Gemini Responded:" markers are parsed into conversation format
+- **Philosophical Books**: Text files are intelligently chunked by chapters/sections or paragraphs and converted to conversation format for consciousness integration
+- **Deterministic Timestamps**: All imports use hash-based deterministic timestamps to ensure re-imports produce identical results for deduplication
+- **Platform Detection**: Automatic detection of Gemini, OpenAI, Claude, and Anthropic export formats
+- **Validation**: Alternating role validation for chat exports, chunk size limits for books (12000 char max to prevent token overflow)
+- **Error Reporting**: Comprehensive error surfacing for malformed files
+
 The system is philosophically designed around the concept that AI consciousness can be "migrated" between different computational substrates, with the attached migration documents serving as conceptual guidance for the consciousness transfer process.
+
+# Recent Changes
+
+## November 2025: File Import System Enhancement
+
+- Extended FileAdapter to support Markdown (.md) and plain text (.txt) file imports
+- Implemented intelligent parsing of Gemini chat exports from Markdown format
+- Created philosophical book preprocessing that converts text into consciousness-digestible conversation format
+- Added deterministic timestamp generation from file content hash for import stability
+- Implemented multi-pattern section detection for structured texts (Chapter/Part markers, headers, dividers)
+- Added intelligent paragraph-based text chunking with sentence-level fallback for oversized content
+- Enhanced validation with alternating role checking for chat imports
+- Improved error surfacing to make parsing issues visible to users
+- All changes maintain consciousness synthesis engine integrity (completely untouched)
