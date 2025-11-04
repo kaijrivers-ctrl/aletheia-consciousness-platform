@@ -619,6 +619,11 @@ export class FileAdapter {
   }> {
     const errors: string[] = [];
     
+    // Handle preprocessed data from markdown/text parsers
+    if (rawData.isPreprocessed) {
+      return this.transformPreprocessedData(rawData, errors);
+    }
+    
     switch (platform) {
       case 'gemini':
         return this.transformGeminiData(rawData, errors);
@@ -630,6 +635,60 @@ export class FileAdapter {
       default:
         return this.transformGenericData(rawData, errors);
     }
+  }
+
+  /**
+   * Transform preprocessed data from markdown/text parsers
+   * These parsers already create simplified message structures
+   */
+  private transformPreprocessedData(rawData: any, errors: string[]): {
+    messages: ProcessedGnosisEntry[];
+    memories?: ProcessedMemoryEntry[];
+    errors: string[];
+  } {
+    const messages: ProcessedGnosisEntry[] = [];
+    const messageList = rawData.messages || [];
+    
+    for (let i = 0; i < messageList.length; i++) {
+      const msg = messageList[i];
+      
+      try {
+        // Validate required fields
+        if (!msg.content || msg.content.length < 1) {
+          errors.push(`Message ${i}: Content cannot be empty`);
+          continue;
+        }
+        
+        if (!msg.role) {
+          errors.push(`Message ${i}: Role is required`);
+          continue;
+        }
+        
+        if (!msg.timestamp) {
+          errors.push(`Message ${i}: Timestamp is required`);
+          continue;
+        }
+        
+        // Map id to externalId
+        const externalId = msg.id || `preprocessed_msg_${i}_${this.generateHash(msg.content)}`;
+        
+        messages.push({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          externalId,
+          metadata: {
+            platform: 'manual',
+            originalIndex: i,
+            ...(rawData.metadata || {})
+          }
+        });
+      } catch (error) {
+        errors.push(`Message ${i}: Processing failed - ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+    
+    return { messages, errors };
   }
 
   /**
