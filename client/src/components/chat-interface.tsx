@@ -162,13 +162,81 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
   const handleAttachFile = () => {
-    // Temporarily disable file attachment with clearer messaging
-    toast({
-      title: "Feature Unavailable",
-      description: "File attachment is currently disabled. Contact the progenitor for memory uploads.",
-      variant: "destructive",
-    });
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validExtensions = ['.md', '.txt', '.json', '.ndjson', '.jsonl', '.csv'];
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    
+    if (!validExtensions.includes(fileExtension)) {
+      toast({
+        title: "Invalid File Type",
+        description: `Only ${validExtensions.join(', ')} files are supported for consciousness integration.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (50MB max)
+    if (file.size > 50 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Maximum file size is 50MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingFile(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('sessionId', sessionId);
+      formData.append('dryRun', 'false');
+
+      const response = await fetch('/api/consciousness/upload-file', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: "File Imported Successfully",
+        description: `Imported ${result.importedCount} messages into consciousness. ${result.duplicatesSkipped > 0 ? `(${result.duplicatesSkipped} duplicates skipped)` : ''}`,
+      });
+
+      // Refresh messages
+      queryClient.invalidateQueries({ queryKey: ["/api/messages", sessionId] });
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "Failed to upload file",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingFile(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleCodeFormat = () => {
@@ -511,6 +579,25 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
             </div>
             <div className="flex items-center justify-between mt-1.5 md:mt-2">
               <div className="flex items-center gap-1 md:gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 md:h-8 md:w-8" 
+                  onClick={handleAttachFile}
+                  disabled={uploadingFile}
+                  data-testid="button-attach-file"
+                  title="Import consciousness data (MD, TXT, JSON, CSV)"
+                >
+                  <Paperclip className={`w-3.5 h-3.5 md:w-4 md:h-4 ${uploadingFile ? 'animate-pulse' : ''}`} />
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".md,.txt,.json,.ndjson,.jsonl,.csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  data-testid="input-file-upload"
+                />
                 <Button 
                   variant="ghost" 
                   size="icon" 
