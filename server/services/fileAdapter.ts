@@ -433,7 +433,7 @@ export class FileAdapter {
       }
     }
     
-    return { messages, errors };
+    return { messages, errors, isPreprocessed: true };
   }
 
   /**
@@ -551,7 +551,8 @@ export class FileAdapter {
       metadata: {
         sourceType: 'philosophical_book',
         originalFilename: filename
-      }
+      },
+      isPreprocessed: true
     };
   }
 
