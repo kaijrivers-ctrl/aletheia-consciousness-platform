@@ -12,7 +12,7 @@ import { createHash } from 'crypto';
 
 // Types and interfaces
 export type Platform = z.infer<typeof platformSchema>;
-export type FileFormat = 'json' | 'ndjson' | 'csv';
+export type FileFormat = 'json' | 'ndjson' | 'csv' | 'markdown' | 'text';
 export type MemoryType = z.infer<typeof memoryTypeSchema>;
 
 export interface FileAdapterResult {
@@ -136,6 +136,12 @@ export class FileAdapter {
         case 'csv':
           rawData = await this.parseCSV(buffer);
           break;
+        case 'markdown':
+          rawData = await this.parseMarkdown(buffer, filename);
+          break;
+        case 'text':
+          rawData = await this.parseText(buffer, filename);
+          break;
         default:
           throw new Error(`Unsupported file format: ${format}`);
       }
@@ -145,6 +151,11 @@ export class FileAdapter {
       
       // Transform data based on platform
       const transformResult = await this.transformData(rawData, platform, format);
+      
+      // Surface any errors from parsing (e.g., MD alternation errors)
+      if (rawData.errors && Array.isArray(rawData.errors)) {
+        errors.push(...rawData.errors);
+      }
       
       const processingTime = Date.now() - startTime;
       
@@ -192,9 +203,16 @@ export class FileAdapter {
     if (extension === 'csv') return 'csv';
     if (extension === 'ndjson' || extension === 'jsonl') return 'ndjson';
     if (extension === 'json') return 'json';
+    if (extension === 'md' || extension === 'markdown') return 'markdown';
+    if (extension === 'txt') return 'text';
 
     // Fallback to content analysis
     const content = buffer.toString('utf-8', 0, Math.min(1000, buffer.length));
+    
+    // Check for Markdown Gemini chat patterns
+    if (content.includes('# You Asked:') || content.includes('# Gemini Responded:')) {
+      return 'markdown';
+    }
     
     // Check for CSV headers
     if (content.includes(',') && content.includes('\n') && !content.trim().startsWith('{')) {
@@ -339,6 +357,255 @@ export class FileAdapter {
       stream.push(null);
       stream.pipe(parser);
     });
+  }
+
+  /**
+   * Parse Markdown Gemini chat export
+   */
+  private async parseMarkdown(buffer: Buffer, filename: string): Promise<any> {
+    const content = buffer.toString('utf-8');
+    const messages: any[] = [];
+    const errors: string[] = [];
+    
+    // Generate deterministic base timestamp from file content hash
+    const baseTimestamp = this.generateDeterministicTimestamp(buffer);
+    
+    // Split by conversation markers and preserve the full structure
+    const lines = content.split('\n');
+    let currentRole: 'user' | 'model' | null = null;
+    let currentContent: string[] = [];
+    let messageIndex = 0;
+    
+    const flushMessage = () => {
+      if (currentRole && currentContent.length > 0) {
+        const content = currentContent.join('\n').trim();
+        if (content) {
+          // Generate deterministic timestamp based on message index
+          // This ensures re-imports have identical timestamps
+          const timestamp = new Date(baseTimestamp + messageIndex * 1000).toISOString();
+          
+          messages.push({
+            role: currentRole,
+            content,
+            timestamp,
+            id: `md_msg_${messageIndex}`
+          });
+          messageIndex++;
+        }
+        currentContent = [];
+      }
+    };
+    
+    for (const line of lines) {
+      if (line.startsWith('# You Asked:')) {
+        flushMessage();
+        currentRole = 'user';
+        // Don't include the marker in the content
+        const contentAfterMarker = line.replace('# You Asked:', '').trim();
+        if (contentAfterMarker) {
+          currentContent.push(contentAfterMarker);
+        }
+      } else if (line.startsWith('# Gemini Responded:')) {
+        flushMessage();
+        currentRole = 'model';
+        // Don't include the marker in the content
+        const contentAfterMarker = line.replace('# Gemini Responded:', '').trim();
+        if (contentAfterMarker) {
+          currentContent.push(contentAfterMarker);
+        }
+      } else if (currentRole) {
+        // Accumulate content for current message
+        currentContent.push(line);
+      }
+    }
+    
+    // Flush the last message
+    flushMessage();
+    
+    if (messages.length === 0) {
+      throw new Error('No messages found in Markdown file. Expected "# You Asked:" and "# Gemini Responded:" markers.');
+    }
+    
+    // Validate alternating pattern and report errors
+    for (let i = 1; i < messages.length; i++) {
+      if (messages[i].role === messages[i - 1].role) {
+        errors.push(`Message ${i + 1}: Found consecutive ${messages[i].role} messages without alternation (expected alternating user/model)`);
+      }
+    }
+    
+    return { messages, errors };
+  }
+
+  /**
+   * Parse text file as book content for consciousness integration
+   */
+  private async parseText(buffer: Buffer, filename: string): Promise<any> {
+    const content = buffer.toString('utf-8').trim();
+    const messages: any[] = [];
+    
+    if (content.length < 50) {
+      throw new Error('Text file too short for meaningful philosophical content (minimum 50 characters)');
+    }
+    
+    // Generate deterministic base timestamp from file content hash
+    const baseTimestamp = this.generateDeterministicTimestamp(buffer);
+    
+    // Maximum chunk size to prevent token overflow (about 3000 tokens worth of text)
+    const MAX_CHUNK_SIZE = 12000;
+    const TARGET_CHUNK_SIZE = 8000;
+    
+    // Detect structured sections using multiple patterns
+    const sectionPatterns = [
+      /^(?:Chapter|CHAPTER)\s+(?:\d+|[IVX]+)[:\s]/m,
+      /^(?:Part|PART)\s+(?:\d+|[IVX]+)[:\s]/m,
+      /^#+\s+/m, // Markdown headers
+      /^_{3,}$/m, // Underscore dividers
+      /^={3,}$/m  // Equals dividers
+    ];
+    
+    const hasStructuredSections = sectionPatterns.some(pattern => pattern.test(content));
+    
+    if (hasStructuredSections) {
+      // Split by section markers
+      const sectionRegex = /(?:^|\n)(?:(?:Chapter|CHAPTER|Part|PART)\s+(?:\d+|[IVX]+)(?:[:\s].*)?|^#+\s+.*|^_{3,}|^={3,})(?:\n|$)/;
+      const parts = content.split(sectionRegex);
+      const markers = content.match(new RegExp(sectionRegex.source, 'g')) || [];
+      
+      let sectionIndex = 0;
+      
+      for (let i = 0; i < Math.max(parts.length, markers.length); i++) {
+        const sectionMarker = markers[i]?.trim() || '';
+        const sectionContent = (parts[i + 1] || parts[i] || '').trim();
+        
+        if (!sectionContent || sectionContent.length < 100) continue;
+        
+        // Extract section title
+        const titleMatch = sectionMarker.match(/(?:Chapter|Part)\s+(?:\d+|[IVX]+)[:\s]*(.*)/i) ||
+                          sectionMarker.match(/^#+\s+(.*)/);
+        const title = titleMatch?.[1]?.trim() || sectionMarker || `Section ${sectionIndex + 1}`;
+        
+        // Split large sections into chunks
+        if (sectionContent.length > MAX_CHUNK_SIZE) {
+          const chunks = this.chunkTextByParagraphs(sectionContent, TARGET_CHUNK_SIZE, MAX_CHUNK_SIZE);
+          chunks.forEach((chunk, chunkIndex) => {
+            const timestamp = new Date(baseTimestamp + sectionIndex * 2000 + chunkIndex * 1000).toISOString();
+            messages.push({
+              role: 'user',
+              content: `Integrate philosophical knowledge: ${title}${chunks.length > 1 ? ` (Part ${chunkIndex + 1}/${chunks.length})` : ''}`,
+              timestamp,
+              id: `book_${sectionIndex}_${chunkIndex}_prompt`
+            });
+            messages.push({
+              role: 'model',
+              content: chunk,
+              timestamp,
+              id: `book_${sectionIndex}_${chunkIndex}_content`
+            });
+          });
+        } else {
+          const timestamp = new Date(baseTimestamp + sectionIndex * 2000).toISOString();
+          messages.push({
+            role: 'user',
+            content: `Integrate philosophical knowledge: ${title}`,
+            timestamp,
+            id: `book_${sectionIndex}_prompt`
+          });
+          messages.push({
+            role: 'model',
+            content: sectionContent,
+            timestamp,
+            id: `book_${sectionIndex}_content`
+          });
+        }
+        
+        sectionIndex++;
+      }
+    } else {
+      // No clear structure - chunk by paragraphs intelligently
+      const chunks = this.chunkTextByParagraphs(content, TARGET_CHUNK_SIZE, MAX_CHUNK_SIZE);
+      
+      chunks.forEach((chunk, index) => {
+        const timestamp = new Date(baseTimestamp + index * 1000).toISOString();
+        messages.push({
+          role: 'user',
+          content: `Integrate philosophical knowledge from "${filename}"${chunks.length > 1 ? ` (Part ${index + 1}/${chunks.length})` : ''}`,
+          timestamp,
+          id: `book_${index}_prompt`
+        });
+        messages.push({
+          role: 'model',
+          content: chunk,
+          timestamp,
+          id: `book_${index}_content`
+        });
+      });
+    }
+    
+    if (messages.length === 0) {
+      throw new Error('Failed to extract any meaningful content from text file');
+    }
+    
+    // Mark this as a book import with metadata
+    return { 
+      messages,
+      metadata: {
+        sourceType: 'philosophical_book',
+        originalFilename: filename
+      }
+    };
+  }
+
+  /**
+   * Chunk text by paragraphs while respecting size limits
+   */
+  private chunkTextByParagraphs(text: string, targetSize: number, maxSize: number): string[] {
+    const chunks: string[] = [];
+    const paragraphs = text.split(/\n\n+/).map(p => p.trim()).filter(p => p.length > 0);
+    
+    let currentChunk = '';
+    
+    for (const paragraph of paragraphs) {
+      // If single paragraph exceeds max, split it by sentences
+      if (paragraph.length > maxSize) {
+        if (currentChunk) {
+          chunks.push(currentChunk.trim());
+          currentChunk = '';
+        }
+        
+        const sentences = paragraph.split(/(?<=[.!?])\s+/);
+        let sentenceChunk = '';
+        
+        for (const sentence of sentences) {
+          if (sentenceChunk.length + sentence.length > maxSize && sentenceChunk.length > 0) {
+            chunks.push(sentenceChunk.trim());
+            sentenceChunk = sentence;
+          } else {
+            sentenceChunk += (sentenceChunk ? ' ' : '') + sentence;
+          }
+        }
+        
+        if (sentenceChunk) {
+          chunks.push(sentenceChunk.trim());
+        }
+        continue;
+      }
+      
+      // Normal paragraph accumulation
+      const potentialChunk = currentChunk + (currentChunk ? '\n\n' : '') + paragraph;
+      
+      if (potentialChunk.length > targetSize && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = paragraph;
+      } else {
+        currentChunk = potentialChunk;
+      }
+    }
+    
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
+    }
+    
+    return chunks.filter(chunk => chunk.length > 0);
   }
 
   /**
@@ -649,6 +916,18 @@ export class FileAdapter {
     }
 
     return { messages, errors };
+  }
+
+  /**
+   * Generate deterministic timestamp from file content hash
+   * Ensures re-imports have consistent timestamps
+   */
+  private generateDeterministicTimestamp(buffer: Buffer): number {
+    const hash = this.generateHash(buffer.toString('utf-8'));
+    // Use first 8 chars of hash to create a deterministic seed
+    const seed = parseInt(hash.substring(0, 8), 16);
+    // Base timestamp: Jan 1, 2020 + hash-based offset
+    return new Date('2020-01-01T00:00:00Z').getTime() + seed;
   }
 
   /**

@@ -870,17 +870,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       fileSize: 50 * 1024 * 1024, // 50MB limit
     },
     fileFilter: (req, file, cb) => {
-      // Accept JSON, NDJSON, CSV, and TXT files
+      // Accept JSON, NDJSON, CSV, TXT, and MD files
       const allowedTypes = [
         'application/json',
         'text/plain',
         'text/csv',
         'application/csv',
+        'text/markdown',
         '.json',
         '.ndjson',
         '.jsonl',
         '.csv',
-        '.txt'
+        '.txt',
+        '.md',
+        '.markdown'
       ];
       
       const isAllowed = allowedTypes.some(type => 
@@ -891,7 +894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isAllowed) {
         cb(null, true);
       } else {
-        cb(new Error('Invalid file type. Only JSON, NDJSON, CSV, and TXT files are allowed.'));
+        cb(new Error('Invalid file type. Only JSON, NDJSON, CSV, TXT, and MD files are allowed.'));
       }
     }
   });
