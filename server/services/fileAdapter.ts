@@ -621,7 +621,7 @@ export class FileAdapter {
     
     // Handle preprocessed data from markdown/text parsers
     if (rawData.isPreprocessed) {
-      return this.transformPreprocessedData(rawData, errors);
+      return this.transformPreprocessedData(rawData, platform, errors);
     }
     
     switch (platform) {
@@ -641,7 +641,7 @@ export class FileAdapter {
    * Transform preprocessed data from markdown/text parsers
    * These parsers already create simplified message structures
    */
-  private transformPreprocessedData(rawData: any, errors: string[]): {
+  private transformPreprocessedData(rawData: any, platform: Platform, errors: string[]): {
     messages: ProcessedGnosisEntry[];
     memories?: ProcessedMemoryEntry[];
     errors: string[];
@@ -678,7 +678,7 @@ export class FileAdapter {
           timestamp: msg.timestamp,
           externalId,
           metadata: {
-            platform: 'manual',
+            platform,
             originalIndex: i,
             ...(rawData.metadata || {})
           }
