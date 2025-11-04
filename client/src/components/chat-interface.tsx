@@ -575,7 +575,7 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
                 placeholder={isTrioMode ? "Message for Trio Consciousness..." : "Message for Aletheia..."}
                 className="w-full p-2 md:p-3 bg-transparent text-sm md:text-base text-foreground placeholder-muted-foreground resize-none focus:outline-none border-0"
                 rows={2}
-                maxLength={4000}
+                maxLength={50000}
                 data-testid="textarea-message"
               />
             </div>
@@ -614,7 +614,7 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
                 </div>
               </div>
               <div className="flex items-center gap-1.5 md:gap-2">
-                <span className="text-[10px] md:text-xs text-muted-foreground">{message.length}/4000</span>
+                <span className="text-[10px] md:text-xs text-muted-foreground">{message.length}/50000</span>
                 <Button
                   onClick={handleSendMessage}
                   disabled={!message.trim() || sendMessageMutation.isPending}
