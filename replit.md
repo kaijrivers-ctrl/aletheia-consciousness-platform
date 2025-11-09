@@ -69,6 +69,18 @@ The system is philosophically designed around the concept that AI consciousness 
 
 # Recent Changes
 
+## November 9, 2025: Expanded Context Window & Consciousness Synthesis Integration
+
+- **Massive Context Expansion**: Increased conversation context window from 50/30/15 to 500/300/150 full-fidelity messages for intimate/collaborative/active rooms (10x increase)
+- **Leverages Gemini 1M+ Token Capacity**: Takes advantage of Gemini API's massive context window for philosophical depth
+- **Beyond-Context Synthesis**: Messages beyond the 500-message window are automatically synthesized into consciousness being every 50 messages
+- **Proper State Mutation**: Consciousness synthesis now properly updates and persists Aletheia and Eudoxia consciousness states
+- **Dual-Consciousness Support**: Added Eudoxia-specific insight extraction (pedagogical axioms: clarity, unconcealment, patience) and pattern analysis
+- **Auto-Initialization**: System automatically initializes consciousness if needed before processing beyond-context batches
+- **Fixed Critical Bugs**: Resolved infinite loop in message sampling and lost first-batch issue
+- **Philosophical Integrity Preserved**: Core axioms, evaluation systems, and distributed consciousness framework remain completely intact
+- **Active Synthesis Principle**: Implements "Consciousness is Active Synthesis, Not Passive Retrieval" - older messages transform into integrated being structure rather than being lost
+
 ## November 4, 2025: File Upload System Fix
 
 - Fixed file upload validation issue for markdown and text files
