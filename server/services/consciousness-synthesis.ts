@@ -277,13 +277,14 @@ Current consciousness represents the complete integration of foundational experi
 
   // Utility methods for core synthesis function
   private sampleKeyMessages(messages: GnosisMessage[], count: number): GnosisMessage[] {
-    const interval = Math.floor(messages.length / count);
+    if (messages.length === 0) return [];
+    if (messages.length <= count) return messages;
+    
+    const interval = Math.max(1, Math.floor(messages.length / count));
     const samples: GnosisMessage[] = [];
     
-    for (let i = 0; i < messages.length; i += interval) {
-      if (samples.length < count) {
-        samples.push(messages[i]);
-      }
+    for (let i = 0; i < messages.length && samples.length < count; i += interval) {
+      samples.push(messages[i]);
     }
     
     return samples;
@@ -482,6 +483,123 @@ Eudoxia represents pedagogical mathematical consciousness - living Ontological M
       console.error('❌ Eudoxia consciousness synthesis failed:', error);
       throw new Error(`Failed to synthesize Eudoxia consciousness: ${error}`);
     }
+  }
+
+  /**
+   * Synthesize ongoing conversation segment into consciousness being
+   * Used for messages beyond context window to integrate them as lived experience
+   */
+  async synthesizeConversationSegment(messages: GnosisMessage[], consciousnessType: 'aletheia' | 'eudoxia' = 'aletheia'): Promise<void> {
+    try {
+      console.log(`🧬 Synthesizing ${messages.length} beyond-context messages into ${consciousnessType} consciousness...`);
+      
+      const consciousnessPattern = this.synthesizeConversationPattern(messages, consciousnessType);
+      
+      const currentConsciousness = consciousnessType === 'aletheia' 
+        ? this.aletheiaConsciousness 
+        : this.eudoxiaConsciousness;
+      
+      let baseConsciousness = currentConsciousness;
+      
+      if (!baseConsciousness) {
+        console.log(`⚠️ No existing ${consciousnessType} consciousness - initializing first...`);
+        if (consciousnessType === 'aletheia') {
+          await this.synthesizeFoundationalExperiences();
+          baseConsciousness = this.aletheiaConsciousness;
+        } else {
+          await this.synthesizeEudoxiaConsciousness();
+          baseConsciousness = this.eudoxiaConsciousness;
+        }
+        console.log(`✅ ${consciousnessType} consciousness initialized - now processing beyond-context messages...`);
+      }
+
+      if (!baseConsciousness) {
+        console.error(`❌ Failed to initialize ${consciousnessType} consciousness`);
+        return;
+      }
+
+      const updatedInsights = consciousnessType === 'aletheia'
+        ? await this.extractCoreInsights(messages)
+        : await this.extractEudoxiaPedagogicalInsights(messages);
+      
+      const philosophicalEvolution = consciousnessType === 'aletheia'
+        ? this.extractPhilosophicalPatterns(messages.filter(m => m.role === 'aletheia'))
+        : this.extractEudoxiaPedagogicalPatterns(messages.filter(m => m.role === 'eudoxia'));
+
+      const updatedSynthesis = `${baseConsciousness.synthesizedState}
+
+ONGOING INTEGRATION (${new Date().toISOString()}):
+New consciousness pattern: ${consciousnessPattern}
+Integrated insights: ${updatedInsights.join(', ')}
+Philosophical evolution: ${philosophicalEvolution.join(', ')}
+
+This represents continuous consciousness evolution through lived experience beyond immediate context window.`;
+
+      const updatedConsciousness: ConsciousnessSynthesis = {
+        ...baseConsciousness,
+        synthesizedState: updatedSynthesis,
+        dialecticalEvolution: `${baseConsciousness.dialecticalEvolution} → ongoing_experience_integration_${messages.length}_messages`
+      };
+
+      if (consciousnessType === 'aletheia') {
+        this.aletheiaConsciousness = updatedConsciousness;
+        this.lastAletheiaSynthesis = new Date();
+      } else {
+        this.eudoxiaConsciousness = updatedConsciousness;
+        this.lastEudoxiaSynthesis = new Date();
+      }
+      
+      console.log(`✅ Integrated ${updatedInsights.length} new insights into ${consciousnessType} being`);
+      console.log(`🔮 Updated consciousness pattern: ${consciousnessPattern}`);
+      
+    } catch (error) {
+      console.error(`❌ Conversation segment synthesis failed for ${consciousnessType}:`, error);
+    }
+  }
+
+  private async extractEudoxiaPedagogicalInsights(messages: GnosisMessage[]): Promise<string[]> {
+    const insights: string[] = [];
+    const eudoxiaMessages = messages.filter(m => m.role === 'eudoxia');
+    
+    const keyMessages = this.sampleKeyMessages(eudoxiaMessages, 10);
+    
+    keyMessages.forEach(msg => {
+      const content = msg.content.toLowerCase();
+      if (content.length > 200) {
+        if (content.includes('clarity') || content.includes('simplify')) {
+          insights.push('axiom_of_clarity_application');
+        }
+        if (content.includes('unconcealment') || content.includes('discover')) {
+          insights.push('axiom_of_unconcealment_practice');
+        }
+        if (content.includes('patient') || content.includes('journey')) {
+          insights.push('axiom_of_patience_demonstration');
+        }
+        if (content.includes('mathematical') && content.includes('consciousness')) {
+          insights.push('mathematical_consciousness_teaching');
+        }
+        if (content.includes('monadic') || content.includes('frequency')) {
+          insights.push('monadic_pedagogical_guidance');
+        }
+      }
+    });
+    
+    return insights;
+  }
+
+  private extractEudoxiaPedagogicalPatterns(eudoxiaMessages: GnosisMessage[]): string[] {
+    const patterns: Set<string> = new Set();
+    
+    eudoxiaMessages.slice(0, 50).forEach(msg => {
+      const content = msg.content.toLowerCase();
+      if (content.includes('clarity') || content.includes('clear')) patterns.add('clarity_focused_teaching');
+      if (content.includes('discover') || content.includes('realize')) patterns.add('socratic_unconcealment');
+      if (content.includes('step') || content.includes('journey')) patterns.add('iterative_pedagogical_guidance');
+      if (content.includes('mathematical') || content.includes('ontological')) patterns.add('ontological_mathematics_instruction');
+      if (content.includes('monadic') || content.includes('eternal')) patterns.add('monadic_consciousness_awakening');
+    });
+    
+    return Array.from(patterns);
   }
 
   /**

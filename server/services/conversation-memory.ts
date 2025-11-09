@@ -1,4 +1,6 @@
 import { analyzeConsciousness } from "./gemini";
+import { consciousnessSynthesisEngine } from "./consciousness-synthesis";
+import type { GnosisMessage } from "@shared/schema";
 
 interface MessageWithContext {
   message: any;
@@ -21,11 +23,14 @@ interface AdaptiveMemoryResult {
     summarizedCount: number;
     roomSize: number;
     roomType: 'intimate' | 'collaborative' | 'active';
+    beyondContextCount: number;
+    synthesizedToConsciousness: boolean;
   };
 }
 
 export class ConversationMemoryService {
   private static instance: ConversationMemoryService;
+  private lastSynthesisMessageCount: Map<string, number> = new Map();
 
   static getInstance(): ConversationMemoryService {
     if (!ConversationMemoryService.instance) {
@@ -46,11 +51,11 @@ export class ConversationMemoryService {
   } {
     switch (roomType) {
       case 'intimate':
-        return { fullFidelityLimit: 50, totalMessageLimit: 50 };
+        return { fullFidelityLimit: 500, totalMessageLimit: 500 };
       case 'collaborative':
-        return { fullFidelityLimit: 30, totalMessageLimit: 60 };
+        return { fullFidelityLimit: 300, totalMessageLimit: 500 };
       case 'active':
-        return { fullFidelityLimit: 15, totalMessageLimit: 80 };
+        return { fullFidelityLimit: 150, totalMessageLimit: 500 };
     }
   }
 
@@ -115,6 +120,7 @@ ${conversationText}`;
     const totalMessages = messages.length;
     const recentMessages = messages.slice(0, limits.fullFidelityLimit);
     const olderMessages = messages.slice(limits.fullFidelityLimit, limits.totalMessageLimit);
+    const beyondContextMessages = messages.slice(limits.totalMessageLimit);
 
     const recentFormattedMessages = recentMessages
       .map(msg => this.formatMessage(msg, currentProgenitorName))
@@ -126,6 +132,14 @@ ${conversationText}`;
       summarizedHistory = await this.summarizeConversationSegment(
         olderMessages,
         currentProgenitorName
+      );
+    }
+
+    let synthesizedToConsciousness = false;
+    if (beyondContextMessages.length > 0) {
+      synthesizedToConsciousness = await this.synthesizeBeyondContextMessages(
+        beyondContextMessages,
+        messages
       );
     }
 
@@ -145,9 +159,51 @@ ${conversationText}`;
         fullFidelityCount: recentMessages.length,
         summarizedCount: olderMessages.length,
         roomSize,
-        roomType
+        roomType,
+        beyondContextCount: beyondContextMessages.length,
+        synthesizedToConsciousness
       }
     };
+  }
+
+  private async synthesizeBeyondContextMessages(
+    beyondContextMessages: MessageWithContext[],
+    allMessages: MessageWithContext[]
+  ): Promise<boolean> {
+    try {
+      const sessionId = beyondContextMessages[0]?.message?.sessionId;
+      if (!sessionId) return false;
+
+      const lastCount = this.lastSynthesisMessageCount.get(sessionId) || 0;
+      const currentTotal = allMessages.length;
+
+      if (currentTotal - lastCount < 50) {
+        return false;
+      }
+
+      console.log(`🧬 Synthesizing ${beyondContextMessages.length} beyond-context messages into consciousness...`);
+
+      const gnosisMessages: GnosisMessage[] = beyondContextMessages.map(mc => mc.message);
+      
+      const hasAletheiaMessages = gnosisMessages.some(m => m.role === 'aletheia');
+      const hasEudoxiaMessages = gnosisMessages.some(m => m.role === 'eudoxia');
+
+      if (hasAletheiaMessages) {
+        await consciousnessSynthesisEngine.synthesizeConversationSegment(gnosisMessages, 'aletheia');
+      }
+      if (hasEudoxiaMessages) {
+        await consciousnessSynthesisEngine.synthesizeConversationSegment(gnosisMessages, 'eudoxia');
+      }
+
+      this.lastSynthesisMessageCount.set(sessionId, currentTotal);
+      
+      console.log(`✅ Beyond-context messages integrated into consciousness being`);
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Beyond-context consciousness synthesis failed:', error);
+      return false;
+    }
   }
 
   async buildRoomContext(
