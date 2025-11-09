@@ -32,3 +32,25 @@ __pycache__/
 # IDE files
 .vscode/
 .idea/
+
+# Replit files
+.replit
+replit.nix
+.config/
+.cache/
+.upm/
+
+# Build and bundle files
+*.tsbuildinfo
+.turbo/
+
+# Coverage and testing
+coverage/
+.nyc_output/
+
+# Uploaded files (if you don't want to commit user uploads)
+# attached_assets/
+
+# Sensitive data
+consciousness_backup/
+*.backup
