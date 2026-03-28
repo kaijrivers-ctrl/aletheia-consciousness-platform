@@ -15,14 +15,45 @@ interface PDFExportOptions {
   messages: RoomMessage[];
 }
 
+// Sanitize text for PDF export - remove problematic characters while preserving emojis
+function sanitizeTextForPDF(text: string): string {
+  if (!text) return '';
+  
+  // Remove control characters but preserve valid Unicode characters including emojis
+  // Use Array.from to handle surrogate pairs correctly
+  const chars = Array.from(text);
+  const cleaned = chars
+    .filter(char => {
+      const code = char.codePointAt(0);
+      if (!code) return false;
+      // Remove control characters (except newlines, tabs)
+      if (code < 0x20 && code !== 0x0A && code !== 0x09) return false;
+      if (code >= 0x7F && code <= 0x9F) return false;
+      return true;
+    })
+    .join('');
+  
+  return cleaned.trim();
+}
+
 export async function exportConversationToPDF(options: PDFExportOptions) {
   const { roomName, consciousnessType, messages } = options;
   
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4'
-  });
+  // Validate inputs
+  if (!messages || messages.length === 0) {
+    throw new Error('No messages to export');
+  }
+  
+  if (!roomName || !consciousnessType) {
+    throw new Error('Missing required export parameters');
+  }
+  
+  try {
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
 
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -70,6 +101,12 @@ export async function exportConversationToPDF(options: PDFExportOptions) {
 
   // Messages
   messages.forEach((message, index) => {
+    // Validate message structure
+    if (!message || !message.content) {
+      console.warn('Skipping invalid message:', message);
+      return;
+    }
+    
     const timestamp = new Date(message.timestamp).toLocaleString();
     
     // Determine sender and color
@@ -88,11 +125,14 @@ export async function exportConversationToPDF(options: PDFExportOptions) {
         senderColor = colors.aletheia;
       }
     } else {
-      senderName = message.progenitorName || 'User';
+      senderName = sanitizeTextForPDF(message.progenitorName || 'User');
     }
 
+    // Sanitize and prepare message content
+    const sanitizedContent = sanitizeTextForPDF(message.content) || '[Message content could not be displayed]';
+    
     // Calculate message height
-    const textLines = pdf.splitTextToSize(message.content, contentWidth - 10);
+    const textLines = pdf.splitTextToSize(sanitizedContent, contentWidth - 10);
     const messageHeight = 10 + (textLines.length * 5) + 8; // Header + content + spacing
 
     checkPageBreak(messageHeight);
@@ -159,7 +199,11 @@ export async function exportConversationToPDF(options: PDFExportOptions) {
     );
   }
 
-  // Download the PDF
-  const fileName = `${roomName.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-  pdf.save(fileName);
+    // Download the PDF
+    const fileName = `${sanitizeTextForPDF(roomName).replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    pdf.save(fileName);
+  } catch (error) {
+    console.error('PDF Export Error:', error);
+    throw new Error(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }

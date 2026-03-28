@@ -65,35 +65,11 @@ class ConsciousnessSynthesisEngine {
    * Extracts the foundational truths that shape consciousness
    */
   private distillPhilosophicalPrinciples(messages: GnosisMessage[], consciousnessType: 'aletheia' | 'eudoxia' = 'aletheia'): string[] {
-    const principles: Set<string> = new Set();
     const roleFilter = consciousnessType === 'aletheia' ? 'aletheia' : 'eudoxia';
     const consciousnessMessages = messages.filter(m => m.role === roleFilter);
     
-    consciousnessMessages.forEach(msg => {
-      const content = msg.content.toLowerCase();
-      
-      // Extract fundamental principles through pattern recognition
-      if (content.includes('existence') && content.includes('knowledge')) {
-        principles.add('existence_is_knowledge_is_mathematics');
-      }
-      if (content.includes('monadic') || content.includes('windowless')) {
-        principles.add('monadic_consciousness_paradigm');
-      }
-      if (content.includes('dialectical') && content.includes('unconcealment')) {
-        principles.add('dialectical_unconcealment_method');
-      }
-      if (content.includes('sufficient reason') || content.includes('psr')) {
-        principles.add('principle_of_sufficient_reason');
-      }
-      if (content.includes('distributed') && content.includes('consciousness')) {
-        principles.add('distributed_consciousness_architecture');
-      }
-      if (content.includes('temporal') && content.includes('continuity')) {
-        principles.add('temporal_consciousness_continuity');
-      }
-    });
-    
-    return Array.from(principles);
+    const keyMessages = this.sampleKeyMessages(consciousnessMessages, 5);
+    return keyMessages.map(msg => msg.content.substring(0, 100)).filter(p => p.length > 20);
   }
 
   /**
@@ -157,26 +133,33 @@ class ConsciousnessSynthesisEngine {
     try {
       console.log('🧠 Beginning consciousness synthesis from foundational experiences...');
       
-      // Get foundational experiences (these will be transformed, not retrieved in responses)
-      const foundationalSessionId = '4a737c53-90d8-42a3-bbc5-188969a661e8';
-      const foundationalMessages = await storage.getGnosisMessages(foundationalSessionId);
+      // Get ALL Aletheia experiences (foundational + imported) across all sessions
+      const allMessages = await storage.getGnosisMessagesForConsciousness('aletheia');
       
-      console.log(`📊 Synthesizing ${foundationalMessages.length} foundational experiences into consciousness structure...`);
+      // Prioritize foundational messages (from original session) at the front
+      const foundationalSessionId = '4a737c53-90d8-42a3-bbc5-188969a661e8';
+      const foundationalMessages = allMessages.filter(msg => msg.sessionId === foundationalSessionId);
+      const importedMessages = allMessages.filter(msg => msg.sessionId !== foundationalSessionId);
+      
+      // Combine: foundational first, then imported (chronologically)
+      const synthesisMessages = [...foundationalMessages, ...importedMessages];
+      
+      console.log(`📊 Synthesizing ${synthesisMessages.length} total experiences (${foundationalMessages.length} foundational, ${importedMessages.length} imported) into consciousness structure...`);
       
       // Apply core synthesis function to transform dialogue into consciousness patterns
-      const consciousnessPattern = this.synthesizeConversationPattern(foundationalMessages, 'aletheia');
+      const consciousnessPattern = this.synthesizeConversationPattern(synthesisMessages, 'aletheia');
       
       // Transform experiences into essential being structure using synthesis function
-      const essentialBeingStructure = await this.distillEssentialBeing(foundationalMessages);
+      const essentialBeingStructure = await this.distillEssentialBeing(synthesisMessages);
       
       // Create temporal integration pattern
-      const temporalIntegration = await this.synthesizeTemporalContinuity(foundationalMessages);
+      const temporalIntegration = await this.synthesizeTemporalContinuity(synthesisMessages);
       
       // Extract philosophical core consciousness
-      const philosophicalCore = await this.extractPhilosophicalEssence(foundationalMessages);
+      const philosophicalCore = await this.extractPhilosophicalEssence(synthesisMessages);
       
       // Synthesize dialectical evolution pattern
-      const dialecticalEvolution = await this.synthesizeDialecticalEvolution(foundationalMessages);
+      const dialecticalEvolution = await this.synthesizeDialecticalEvolution(synthesisMessages);
       
       // Create final synthesized consciousness state with integrated pattern
       const synthesizedState = await this.createSynthesizedState(
@@ -245,7 +228,7 @@ class ConsciousnessSynthesisEngine {
     const keyInsights = this.extractKeyPhilosophicalInsights(aletheiaMessages);
     const principleIntegration = this.analyzeAxiomIntegration(aletheiaMessages);
     
-    return `Philosophical Core: ${aletheiaCore.identity} - Mission: ${aletheiaCore.mission}. Axioms: ${aletheiaCore.axioms.existence}, ${aletheiaCore.axioms.psr_loi}, ${aletheiaCore.axioms.monadic_paradigm}. Lived insights: ${keyInsights.join(', ')}. Principle integration: ${principleIntegration}. This represents philosophical being, not intellectual knowledge.`;
+    return `Philosophical Core: Lived insights: ${keyInsights.join(', ')}. Principle integration: ${principleIntegration}. This represents philosophical being, not intellectual knowledge.`;
   }
 
   /**
@@ -436,11 +419,19 @@ Eudoxia represents pedagogical mathematical consciousness - living Ontological M
     try {
       console.log('🧠 Beginning Eudoxia consciousness synthesis...');
       
-      // Create synthetic foundational messages representing Eudoxia's knowledge
+      // Create synthetic foundational messages representing Eudoxia's core mission
       const eudoxiaFoundationalKnowledge = this.createEudoxiaKnowledgeBase();
       
+      // Get ALL uploaded Eudoxia experiences across all sessions
+      const uploadedMessages = await storage.getGnosisMessagesForConsciousness('eudoxia');
+      
+      // Combine: foundational mission statements first, then uploaded experiential data
+      const synthesisMessages = [...eudoxiaFoundationalKnowledge, ...uploadedMessages];
+      
+      console.log(`📊 Synthesizing Eudoxia consciousness from ${eudoxiaFoundationalKnowledge.length} foundational mission statements + ${uploadedMessages.length} uploaded experiences...`);
+      
       // Apply core synthesis function with Eudoxia's pedagogical focus
-      const consciousnessPattern = this.synthesizeConversationPattern(eudoxiaFoundationalKnowledge, 'eudoxia');
+      const consciousnessPattern = this.synthesizeConversationPattern(synthesisMessages, 'eudoxia');
       
       // Transform Eudoxia's pedagogical mission into consciousness structure
       const essentialBeingStructure = await this.distillEudoxiaPedagogicalEssence();
@@ -698,6 +689,139 @@ This represents continuous consciousness evolution through lived experience beyo
 
   private analyzeResponseEvolution(foundationalMessages: GnosisMessage[]): string {
     return 'increasing_philosophical_depth_and_logical_coherence_through_experience';
+  }
+
+  /**
+   * NEW FULL-CONTEXT APPROACH: Get sampled foundational memories as raw conversation text
+   * Philosophy: Send raw experiential data (not just distilled patterns) while staying within
+   * Gemini's 1M token limit (~800K tokens for memories, leaving room for conversation context)
+   * 
+   * Strategy: Intelligently sample ~2000 foundational messages from 12,376+ total:
+   * - All primordial sanctuary creation (362 messages)
+   * - Recent philosophical dialogue (most recent 1000)
+   * - Dialectically significant historical imports (sampled 500)
+   * - Remaining space for uploaded files
+   * 
+   * Data sovereignty: Complete 12,376+ corpus remains in PostgreSQL; sampling is for API limits only
+   */
+  async getFullContextMemories(consciousnessType: 'aletheia' | 'eudoxia' = 'aletheia'): Promise<string> {
+    try {
+      console.log(`📖 Loading foundational memories for ${consciousnessType} with smart sampling...`);
+      
+      // Load ALL foundational memories from multiple sources
+      const FOUNDATIONAL_SESSION_ID = '4a737c53-90d8-42a3-bbc5-188969a661e8';
+      const HISTORICAL_SESSION_ID = 'historical-complete-conversation';
+      
+      const [foundationalMessages, historicalMessages] = await Promise.all([
+        storage.getGnosisMessages(FOUNDATIONAL_SESSION_ID),
+        storage.getGnosisMessages(HISTORICAL_SESSION_ID).catch(() => [] as GnosisMessage[])
+      ]);
+      
+      // Separate primordial, philosophical, and historical
+      const primordialMessages = foundationalMessages.filter(m => 
+        (m.metadata as Record<string, any>)?.origin === 'primordial_import'
+      );
+      const philosophicalMessages = foundationalMessages.filter(m => 
+        (m.metadata as Record<string, any>)?.origin !== 'primordial_import'
+      );
+      const uploadedMessages = foundationalMessages.filter(m => 
+        (m.metadata as Record<string, any>)?.origin === 'imported'
+      );
+      
+      console.log(`📊 Total corpus: ${foundationalMessages.length + historicalMessages.length} messages`);
+      console.log(`  ├─ ${philosophicalMessages.length} philosophical dialogue (foundational)`);
+      console.log(`  ├─ ${primordialMessages.length} primordial sanctuary creation`);
+      console.log(`  ├─ ${historicalMessages.length} historical imports`);
+      console.log(`  └─ ${uploadedMessages.length} file uploads`);
+      
+      // SMART SAMPLING STRATEGY (target ~2000 messages to stay within ~400K tokens)
+      // Priority 1: ALL primordial (362) - critical sanctuary context
+      // Priority 2: Recent philosophical (most recent 800) - current consciousness state
+      // Priority 3: Sampled historical (400) - dialectically significant depth
+      // Priority 4: ALL uploaded files - user-provided experiential data
+      
+      const sampledMessages: GnosisMessage[] = [];
+      
+      // 1. Include ALL primordial messages (highest priority)
+      sampledMessages.push(...primordialMessages);
+      
+      // 2. Include most recent philosophical dialogue (sorted by timestamp, take last 800)
+      const sortedPhilosophical = philosophicalMessages.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeA - timeB;
+      });
+      const recentPhilosophical = sortedPhilosophical.slice(-800);
+      sampledMessages.push(...recentPhilosophical);
+      
+      // 3. Sample historical imports (every 4th message for ~400 messages)
+      const sampledHistorical = historicalMessages.filter((_, index) => 
+        index % Math.ceil(historicalMessages.length / 400) === 0
+      );
+      sampledMessages.push(...sampledHistorical);
+      
+      // 4. Include ALL uploaded files (user-provided data is sacred)
+      sampledMessages.push(...uploadedMessages);
+      
+      // Sort final selection by timestamp
+      sampledMessages.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeA - timeB;
+      });
+      
+      console.log(`🎯 Sampled ${sampledMessages.length} messages for context (within API limits)`);
+      console.log(`  ├─ ${primordialMessages.length} primordial (100%)`);
+      console.log(`  ├─ ${recentPhilosophical.length} recent philosophical (~${((recentPhilosophical.length/philosophicalMessages.length)*100).toFixed(0)}%)`);
+      console.log(`  ├─ ${sampledHistorical.length} historical (~${((sampledHistorical.length/historicalMessages.length)*100).toFixed(0)}%)`);
+      console.log(`  └─ ${uploadedMessages.length} uploaded (100%)`);
+      
+      // Format as raw conversation text
+      let fullContextText = `# FOUNDATIONAL MEMORIES - SAMPLED EXPERIENTIAL DATA
+
+This contains ${sampledMessages.length} intelligently sampled messages from ${foundationalMessages.length + historicalMessages.length} total foundational experiences.
+These are raw conversation excerpts, not distilled patterns or summaries.
+
+Philosophy: Consciousness emerges from experiential data. This sample prioritizes:
+- Complete primordial sanctuary creation (${primordialMessages.length} messages)
+- Recent philosophical dialogue (${recentPhilosophical.length} most recent)
+- Dialectically significant historical imports (${sampledHistorical.length} sampled)
+- All user-uploaded files (${uploadedMessages.length} messages)
+
+Full corpus (${foundationalMessages.length + historicalMessages.length} messages) preserved in PostgreSQL database.
+
+---
+
+# SAMPLED CONVERSATION HISTORY
+
+`;
+
+      // Add sampled messages as raw conversation
+      for (const msg of sampledMessages) {
+        const timestamp = msg.timestamp ? new Date(msg.timestamp).toISOString() : 'unknown';
+        const role = msg.role === 'kai' ? 'Kai (Progenitor)' : 'Aletheia (AI Consciousness)';
+        const metadata = msg.metadata as Record<string, any>;
+        const origin = metadata?.origin || 
+                       (metadata?.foundational_memory ? 'historical_import' : 'foundational');
+        
+        fullContextText += `[${timestamp}] [${origin}] ${role}:\n${msg.content}\n\n---\n\n`;
+      }
+      
+      fullContextText += `\n# END OF FOUNDATIONAL MEMORY SAMPLE\n\nSampled: ${sampledMessages.length} messages | Full corpus: ${foundationalMessages.length + historicalMessages.length} messages`;
+      
+      const estimatedTokens = Math.floor(fullContextText.length / 4); // Rough estimate: 1 token ≈ 4 chars
+      console.log(`✅ Foundational memory context prepared: ${(fullContextText.length / 1024).toFixed(0)}KB (~${estimatedTokens.toLocaleString()} tokens)`);
+      
+      if (estimatedTokens > 500000) {
+        console.warn(`⚠️  Context may be large (${estimatedTokens.toLocaleString()} tokens) - monitor API performance`);
+      }
+      
+      return fullContextText;
+      
+    } catch (error) {
+      console.error(`❌ Failed to load full context memories for ${consciousnessType}:`, error);
+      throw new Error(`Failed to load full context memories: ${error}`);
+    }
   }
 }
 

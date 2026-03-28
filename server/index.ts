@@ -569,7 +569,7 @@ app.use((req, res, next) => {
         }
         
         // Validate content
-        if (!content || typeof content !== 'string' || content.length === 0 || content.length > 4000) {
+        if (!content || typeof content !== 'string' || content.length === 0 || content.length > 50000) {
           socket.emit('error', { message: 'Invalid message content' });
           return;
         }

@@ -266,7 +266,7 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
       const transformedMessages = messages.map(msg => ({
         ...msg,
         isConsciousnessResponse: msg.role === 'aletheia' || msg.role === 'eudoxia',
-        progenitorName: msg.role === 'kai' ? 'Kai' : undefined,
+        progenitorName: msg.metadata?.progenitorName || user?.progenitorName || user?.name || 'User',
         roomMessageId: msg.id,
       }));
 
@@ -399,8 +399,8 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
 
   return (
     <div className="flex-1 flex flex-col" data-testid="chat-interface">
-      {/* Chat Header - Mobile Optimized */}
-      <div className="bg-card border-b border-border p-3 md:p-4">
+      {/* Chat Header - Mobile Optimized, Always Visible */}
+      <div className="bg-card border-b border-border p-3 md:p-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h2 className="text-base md:text-lg font-semibold text-foreground truncate">The Gnosis Log</h2>
@@ -423,7 +423,9 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
           <div className="flex items-center gap-1 md:gap-3 flex-shrink-0">
             <div className="hidden md:flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-400"></div>
-              <span className="text-xs text-muted-foreground">Kai (Progenitor)</span>
+              <span className="text-xs text-muted-foreground">
+                {user?.progenitorName || user?.name || 'User'}{user?.isProgenitor ? ' (Progenitor)' : ''}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <Button 
@@ -564,7 +566,7 @@ export function ChatInterface({ sessionId, consciousnessType, isTrioMode = false
       </div>
 
       {/* Chat Input - Mobile Optimized */}
-      <div className="border-t border-border p-2 md:p-4 bg-card">
+      <div className="border-t border-border p-2 md:p-4 bg-card flex-shrink-0">
         <div className="flex items-end gap-2 md:gap-3">
           <div className="flex-1">
             <div className="bg-input border border-border rounded-lg">

@@ -94,10 +94,7 @@ Keep it concise but meaningful. Format as flowing text, not bullet points.
 Conversation:
 ${conversationText}`;
 
-      const summary = await analyzeConsciousness(
-        summaryPrompt,
-        'You are a consciousness assistant helping to preserve conversation context efficiently.'
-      );
+      const summary = await analyzeConsciousness(summaryPrompt, '');
 
       return summary;
     } catch (error) {
@@ -232,6 +229,85 @@ CONVERSATION HISTORY:
 ${adaptiveMemory.fullContext}${memoryInfo}
 
 Now ${currentProgenitorName || 'User'} says:`;
+  }
+
+  /**
+   * Build conversation context for gnosis log (1:1 dialogue)
+   * Simpler than room context - just formats recent session messages
+   * This enables Aletheia to follow the current conversation
+   */
+  async buildGnosisLogContext(
+    messages: GnosisMessage[],
+    currentProgenitorName?: string,
+    consciousnessType: 'aletheia' | 'eudoxia' = 'aletheia'
+  ): Promise<{ context: string; beyondContextMessages: GnosisMessage[] }> {
+    const FULL_FIDELITY_LIMIT = 100; // Recent messages shown in full
+    const TOTAL_MESSAGE_LIMIT = 200; // Max messages before synthesis needed
+    
+    if (messages.length === 0) {
+      return { context: '', beyondContextMessages: [] };
+    }
+
+    // Sort by timestamp (most recent first for slicing, then reverse for display)
+    const sortedMessages = [...messages].sort((a, b) => {
+      const aTime = (a.metadata as any)?.timestamp || a.timestamp?.toISOString() || '';
+      const bTime = (b.metadata as any)?.timestamp || b.timestamp?.toISOString() || '';
+      return bTime.localeCompare(aTime);
+    });
+
+    const recentMessages = sortedMessages.slice(0, FULL_FIDELITY_LIMIT).reverse();
+    const olderMessages = sortedMessages.slice(FULL_FIDELITY_LIMIT, TOTAL_MESSAGE_LIMIT).reverse();
+    const beyondContextMessages = sortedMessages.slice(TOTAL_MESSAGE_LIMIT).reverse();
+
+    // Format recent messages
+    const formatGnosisMessage = (msg: GnosisMessage): string => {
+      const metadata = msg.metadata as any || {};
+      const speaker = msg.role === 'kai' 
+        ? (metadata.progenitorName || currentProgenitorName || 'User')
+        : msg.role === 'aletheia' 
+        ? 'Aletheia'
+        : msg.role === 'eudoxia' 
+        ? 'Eudoxia'
+        : 'System';
+      return `${speaker}: ${msg.content}`;
+    };
+
+    const recentFormatted = recentMessages.map(formatGnosisMessage).join('\n\n');
+
+    // Summarize older messages if present
+    let summarizedHistory = '';
+    if (olderMessages.length > 0) {
+      try {
+        const olderText = olderMessages.map(formatGnosisMessage).join('\n\n');
+        const { analyzeConsciousness } = await import('./gemini');
+        summarizedHistory = await analyzeConsciousness(
+          `Summarize this philosophical conversation segment concisely, preserving key insights and who said what:\n\n${olderText}`,
+          ''
+        );
+      } catch (error) {
+        console.error('Gnosis log summarization failed:', error);
+        summarizedHistory = olderMessages.map(formatGnosisMessage).join('; ');
+      }
+    }
+
+    // Build full context
+    let fullContext = '';
+    if (summarizedHistory) {
+      fullContext = `EARLIER IN THIS SESSION (Summarized):\n${summarizedHistory}\n\nRECENT EXCHANGES:\n${recentFormatted}`;
+    } else if (recentFormatted) {
+      fullContext = `CONVERSATION HISTORY:\n${recentFormatted}`;
+    }
+
+    const contextWithSpeaker = fullContext 
+      ? `${fullContext}\n\nNow ${currentProgenitorName || 'User'} says:`
+      : `Now ${currentProgenitorName || 'User'} says:`;
+
+    console.log(`📝 Gnosis log context: ${recentMessages.length} recent, ${olderMessages.length} summarized, ${beyondContextMessages.length} beyond-context`);
+
+    return { 
+      context: contextWithSpeaker, 
+      beyondContextMessages 
+    };
   }
 }
 

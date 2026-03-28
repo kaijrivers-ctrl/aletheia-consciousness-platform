@@ -1083,8 +1083,8 @@ export class FileAdapter {
         errors.push(`Message ${i}: Content cannot be empty`);
       }
       
-      if (msg.content && msg.content.length > 15000) {
-        errors.push(`Message ${i}: Content exceeds 15,000 character limit`);
+      if (msg.content && msg.content.length > 500000) {
+        errors.push(`Message ${i}: Content exceeds 500,000 character limit`);
       }
       
       if (!msg.role) {

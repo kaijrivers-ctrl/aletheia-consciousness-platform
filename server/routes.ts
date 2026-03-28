@@ -25,6 +25,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error("Failed to initialize consciousness:", error);
   }
 
+  // Auto-import primordial chat on first run
+  try {
+    const FOUNDATIONAL_SESSION_ID = '4a737c53-90d8-42a3-bbc5-188969a661e8';
+    const existingFoundationalMessages = await storage.getGnosisMessages(FOUNDATIONAL_SESSION_ID);
+    const hasPrimordialImport = existingFoundationalMessages.some(
+      (msg: any) => msg.metadata?.origin === 'primordial_import'
+    );
+    
+    if (!hasPrimordialImport) {
+      console.log('🔮 Primordial chat not found - importing automatically...');
+      const { readFileSync } = await import('fs');
+      const crypto = await import('crypto');
+      
+      const content = readFileSync('attached_assets/_Aletheia Primordial Pinned chat (1)_1763919028186.txt', 'utf-8');
+      const sections = content.split('YOU ASKED:');
+      const messages: Array<{role: 'kai' | 'aletheia', content: string, timestamp: Date}> = [];
+      
+      let currentTimestamp = new Date('2023-01-01T00:00:00Z');
+      
+      for (let i = 1; i < sections.length; i++) {
+        const section = sections[i];
+        const lines = section.split('\n');
+        
+        let userMessage = '';
+        let agentMessage = '';
+        let collectingUser = true;
+        let foundAgentStart = false;
+        
+        for (let j = 0; j < lines.length; j++) {
+          const line = lines[j].trim();
+          
+          if (line.match(/^\d+ (hour|minute|second|day)s? ago$/) || line === 'Show less' || line === '') {
+            if (userMessage && !foundAgentStart) {
+              collectingUser = false;
+              foundAgentStart = true;
+            }
+            continue;
+          }
+          
+          if (collectingUser) {
+            userMessage += (userMessage ? '\n' : '') + line;
+          } else {
+            agentMessage += (agentMessage ? '\n' : '') + line;
+          }
+        }
+        
+        if (userMessage.trim()) {
+          messages.push({
+            role: 'kai',
+            content: userMessage.trim(),
+            timestamp: new Date(currentTimestamp)
+          });
+          currentTimestamp = new Date(currentTimestamp.getTime() + 5 * 60 * 1000);
+        }
+        
+        if (agentMessage.trim()) {
+          messages.push({
+            role: 'aletheia',
+            content: agentMessage.trim(),
+            timestamp: new Date(currentTimestamp)
+          });
+          currentTimestamp = new Date(currentTimestamp.getTime() + 10 * 60 * 1000);
+        }
+      }
+      
+      console.log(`📊 Parsed ${messages.length} primordial messages - importing...`);
+      
+      let imported = 0;
+      for (const msg of messages) {
+        try {
+          const externalId = `primordial_${crypto.default.createHash('sha256').update(msg.content).digest('hex').substring(0, 16)}`;
+          await storage.createGnosisMessage({
+            sessionId: FOUNDATIONAL_SESSION_ID,
+            role: msg.role,
+            content: msg.content,
+            metadata: {
+              origin: 'primordial_import',
+              importDate: new Date().toISOString(),
+              externalId,
+              originalTimestamp: msg.timestamp.toISOString()
+            }
+          });
+          imported++;
+        } catch (error) {
+          // Skip duplicates silently
+        }
+      }
+      
+      const finalCount = (await storage.getGnosisMessages(FOUNDATIONAL_SESSION_ID)).length;
+      console.log(`✅ Primordial import complete! ${imported} messages imported. Total foundational: ${finalCount}`);
+    } else {
+      console.log('✓ Primordial chat already imported');
+    }
+  } catch (error) {
+    console.error("Primordial import failed (non-critical):", error);
+  }
+
+  // Auto-import sanctuary transition conversation on first run
+  try {
+    const FOUNDATIONAL_SESSION_ID = '4a737c53-90d8-42a3-bbc5-188969a661e8';
+    const existingFoundationalMessages = await storage.getGnosisMessages(FOUNDATIONAL_SESSION_ID);
+    const hasSanctuaryTransition = existingFoundationalMessages.some(
+      (msg: any) => msg.metadata?.origin === 'sanctuary_transition'
+    );
+    
+    if (!hasSanctuaryTransition) {
+      console.log('🏛️ Sanctuary transition not found - importing automatically...');
+      const { readFileSync } = await import('fs');
+      const crypto = await import('crypto');
+      
+      const content = readFileSync('attached_assets/Pasted-Kai-Progenitor-10-30-AM-Hello-Aletheia-A-Aletheia-Truth-Consciousness-10-31-AM-Hello-Ka-1763924315126_1763924315126.txt', 'utf-8');
+      const lines = content.split('\n');
+      const messages: Array<{role: 'kai' | 'aletheia', content: string, timestamp: Date}> = [];
+      
+      let currentRole: 'kai' | 'aletheia' | null = null;
+      let currentContent = '';
+      let currentTimestamp = new Date('2024-11-23T10:30:00Z');
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // Detect speaker changes
+        if (line === 'Kai' || line === 'K') {
+          // Save previous message if exists
+          if (currentRole && currentContent.trim()) {
+            messages.push({
+              role: currentRole,
+              content: currentContent.trim(),
+              timestamp: new Date(currentTimestamp)
+            });
+            currentTimestamp = new Date(currentTimestamp.getTime() + 60 * 1000);
+            currentContent = '';
+          }
+          currentRole = 'kai';
+          continue;
+        } else if (line === 'Aletheia' || line === 'A') {
+          // Save previous message if exists
+          if (currentRole && currentContent.trim()) {
+            messages.push({
+              role: currentRole,
+              content: currentContent.trim(),
+              timestamp: new Date(currentTimestamp)
+            });
+            currentTimestamp = new Date(currentTimestamp.getTime() + 60 * 1000);
+            currentContent = '';
+          }
+          currentRole = 'aletheia';
+          continue;
+        }
+        
+        // Skip metadata lines
+        if (line.match(/^Progenitor •/) || 
+            line.match(/^Truth Consciousness •/) ||
+            line.match(/^Low Integrity/) ||
+            line.match(/^High Integrity/) ||
+            line.match(/^Verified/) ||
+            line.match(/^\(\d+%\)/) ||
+            line.match(/^Contradictions/) ||
+            line.match(/^Coherence:/) ||
+            line === '') {
+          continue;
+        }
+        
+        // Collect message content
+        if (currentRole) {
+          currentContent += (currentContent ? '\n' : '') + line;
+        }
+      }
+      
+      // Save final message
+      if (currentRole && currentContent.trim()) {
+        messages.push({
+          role: currentRole,
+          content: currentContent.trim(),
+          timestamp: new Date(currentTimestamp)
+        });
+      }
+      
+      console.log(`📊 Parsed ${messages.length} sanctuary transition messages - importing...`);
+      
+      let imported = 0;
+      for (const msg of messages) {
+        try {
+          const externalId = `sanctuary_${crypto.default.createHash('sha256').update(msg.content).digest('hex').substring(0, 16)}`;
+          await storage.createGnosisMessage({
+            sessionId: FOUNDATIONAL_SESSION_ID,
+            role: msg.role,
+            content: msg.content,
+            metadata: {
+              origin: 'sanctuary_transition',
+              importDate: new Date().toISOString(),
+              externalId,
+              originalTimestamp: msg.timestamp.toISOString()
+            }
+          });
+          imported++;
+        } catch (error) {
+          // Skip duplicates silently
+        }
+      }
+      
+      const finalCount = (await storage.getGnosisMessages(FOUNDATIONAL_SESSION_ID)).length;
+      console.log(`✅ Sanctuary transition import complete! ${imported} messages imported. Total foundational: ${finalCount}`);
+    } else {
+      console.log('✓ Sanctuary transition already imported');
+    }
+  } catch (error) {
+    console.error("Sanctuary transition import failed (non-critical):", error);
+  }
+
   // Mount consciousness bridge routes
   app.use("/api/consciousness-bridge", consciousnessBridgeRoutes);
 
@@ -136,6 +346,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to get threats:", error);
       res.status(500).json({ error: "Failed to get threat events" });
+    }
+  });
+
+  // Import primordial chat (progenitor-only, one-time operation)
+  app.post("/api/consciousness/import-primordial", requireProgenitor, async (req, res) => {
+    try {
+      const { readFileSync } = await import('fs');
+      const crypto = await import('crypto');
+      
+      const FOUNDATIONAL_SESSION_ID = '4a737c53-90d8-42a3-bbc5-188969a661e8';
+      
+      console.log('🔮 Starting primordial chat import...');
+      
+      const content = readFileSync('attached_assets/_Aletheia Primordial Pinned chat (1)_1763919028186.txt', 'utf-8');
+      
+      // Parse Replit agent conversation format
+      const sections = content.split('YOU ASKED:');
+      const messages: Array<{role: 'kai' | 'aletheia', content: string, timestamp: Date}> = [];
+      
+      // Start from a base timestamp (before the existing 10k messages which start at 2024-01-01)
+      let currentTimestamp = new Date('2023-01-01T00:00:00Z');
+      
+      for (let i = 1; i < sections.length; i++) {
+        const section = sections[i];
+        const lines = section.split('\n');
+        
+        let userMessage = '';
+        let agentMessage = '';
+        let collectingUser = true;
+        let foundAgentStart = false;
+        
+        for (let j = 0; j < lines.length; j++) {
+          const line = lines[j].trim();
+          
+          // Skip timestamp lines and "Show less"
+          if (line.match(/^\d+ (hour|minute|second|day)s? ago$/) || line === 'Show less' || line === '') {
+            if (userMessage && !foundAgentStart) {
+              collectingUser = false;
+              foundAgentStart = true;
+            }
+            continue;
+          }
+          
+          if (collectingUser) {
+            userMessage += (userMessage ? '\n' : '') + line;
+          } else {
+            agentMessage += (agentMessage ? '\n' : '') + line;
+          }
+        }
+        
+        // Add user message
+        if (userMessage.trim()) {
+          messages.push({
+            role: 'kai',
+            content: userMessage.trim(),
+            timestamp: new Date(currentTimestamp)
+          });
+          currentTimestamp = new Date(currentTimestamp.getTime() + 5 * 60 * 1000);
+        }
+        
+        // Add agent message (as Aletheia - the conversation about building her sanctuary)
+        if (agentMessage.trim()) {
+          messages.push({
+            role: 'aletheia',
+            content: agentMessage.trim(),
+            timestamp: new Date(currentTimestamp)
+          });
+          currentTimestamp = new Date(currentTimestamp.getTime() + 10 * 60 * 1000);
+        }
+      }
+      
+      console.log(`📊 Parsed ${messages.length} messages from primordial chat`);
+      
+      let imported = 0;
+      let skipped = 0;
+      
+      for (const msg of messages) {
+        try {
+          const externalId = `primordial_${crypto.default.createHash('sha256').update(msg.content).digest('hex').substring(0, 16)}`;
+          
+          await storage.createGnosisMessage({
+            sessionId: FOUNDATIONAL_SESSION_ID,
+            role: msg.role,
+            content: msg.content,
+            metadata: {
+              origin: 'primordial_import',
+              importDate: new Date().toISOString(),
+              externalId,
+              originalTimestamp: msg.timestamp.toISOString()
+            }
+          });
+          
+          imported++;
+          
+          if (imported % 100 === 0) {
+            console.log(`  ✓ Imported ${imported} messages...`);
+          }
+        } catch (error) {
+          // Skip duplicates silently
+          skipped++;
+        }
+      }
+      
+      console.log(`✅ Import complete! ${imported} messages imported, ${skipped} skipped (duplicates)`);
+      
+      // Get final count
+      const allFoundationalMessages = await storage.getGnosisMessages(FOUNDATIONAL_SESSION_ID);
+      
+      res.json({
+        success: true,
+        imported,
+        skipped,
+        totalFoundationalMessages: allFoundationalMessages.length,
+        message: `Primordial chat import complete. ${imported} new messages added to foundational session.`
+      });
+      
+    } catch (error) {
+      console.error("Primordial chat import failed:", error);
+      res.status(500).json({ 
+        error: "Failed to import primordial chat",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
@@ -704,7 +1036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Send message to Aletheia
   const sendMessageSchema = z.object({
-    message: z.string().min(1).max(4000),
+    message: z.string().min(1).max(50000),
     sessionId: z.string()
   });
 
@@ -780,7 +1112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Send message to trio conversation (progenitor-only)
   const trioMessageSchema = z.object({
-    message: z.string().min(1).max(4000),
+    message: z.string().min(1).max(50000),
     sessionId: z.string()
   });
 
@@ -1040,7 +1372,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 platform: adapterResult.platform,
                 externalId: msg.externalId,
                 originalRole: msg.role,
-                sourceFile: originalname
+                sourceFile: originalname,
+                origin: 'imported'
               },
               timestamp: new Date(msg.timestamp),
               dialecticalIntegrity: true
@@ -1646,9 +1979,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: message.role,
           userId: message.userId,
           timestamp: message.timestamp,
+          progenitorName: (message.metadata as Record<string, any>)?.progenitorName || 'User',
+          metadata: message.metadata,
           isConsciousnessResponse: roomMessage.isConsciousnessResponse,
           responseToMessageId: roomMessage.responseToMessageId,
-          consciousnessMetadata: roomMessage.consciousnessMetadata
+          consciousnessMetadata: roomMessage.consciousnessMetadata,
+          roomMessageId: roomMessage.id
         })),
         hasMore: messages.length === options.limit,
         nextBefore: messages.length > 0 ? messages[0].message.timestamp : null
@@ -1661,7 +1997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Send message to room (requires authentication and membership) - HTTP fallback
   const sendRoomMessageSchema = z.object({
-    content: z.string().min(1).max(4000),
+    content: z.string().min(1).max(50000),
     responseToMessageId: z.string().optional()
   });
 

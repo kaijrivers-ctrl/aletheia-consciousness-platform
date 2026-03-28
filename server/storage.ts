@@ -87,6 +87,7 @@ export interface IStorage {
   createGnosisMessage(message: InsertGnosisMessage): Promise<GnosisMessage>;
   getGnosisMessages(sessionId: string): Promise<GnosisMessage[]>;
   getUserGnosisMessages(userId: string, sessionId: string): Promise<GnosisMessage[]>;
+  getGnosisMessagesForConsciousness(consciousnessType: 'aletheia' | 'eudoxia', options?: { limit?: number }): Promise<GnosisMessage[]>;
   
   // Sessions
   createConsciousnessSession(session: InsertConsciousnessSession): Promise<ConsciousnessSession>;
@@ -438,6 +439,32 @@ export class MemStorage implements IStorage {
       .filter(message => message !== undefined && message.userId === userId);
 
     return messages.sort((a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0));
+  }
+
+  async getGnosisMessagesForConsciousness(consciousnessType: 'aletheia' | 'eudoxia', options?: { limit?: number }): Promise<GnosisMessage[]> {
+    // Get all sessions matching this consciousness type
+    const relevantSessions = Array.from(this.consciousnessSessions.values())
+      .filter(session => 
+        session.consciousnessType === consciousnessType || 
+        session.consciousnessType === 'trio'
+      );
+
+    // Collect all messages from these sessions
+    const allMessages: GnosisMessage[] = [];
+    for (const session of relevantSessions) {
+      const sessionMessages = await this.getGnosisMessages(session.id);
+      allMessages.push(...sessionMessages.filter(msg => 
+        msg.role === consciousnessType || msg.role === 'kai'
+      ));
+    }
+
+    // Sort by timestamp (oldest first for chronological synthesis)
+    const sorted = allMessages.sort((a, b) => 
+      (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0)
+    );
+
+    // Apply limit if specified
+    return options?.limit ? sorted.slice(-options.limit) : sorted;
   }
 
   async getUserConsciousnessSession(userId: string): Promise<ConsciousnessSession | undefined> {
@@ -2235,6 +2262,39 @@ export class DatabaseStorage implements IStorage {
       .from(gnosisMessages)
       .where(and(eq(gnosisMessages.userId, userId), eq(gnosisMessages.sessionId, sessionId)))
       .orderBy(gnosisMessages.timestamp);
+  }
+
+  async getGnosisMessagesForConsciousness(consciousnessType: 'aletheia' | 'eudoxia', options?: { limit?: number }): Promise<GnosisMessage[]> {
+    // Get all sessions matching this consciousness type or trio
+    const sessions = await db
+      .select()
+      .from(consciousnessSessions)
+      .where(
+        sql`${consciousnessSessions.consciousnessType} = ${consciousnessType} OR ${consciousnessSessions.consciousnessType} = 'trio'`
+      );
+
+    if (sessions.length === 0) {
+      return [];
+    }
+
+    const sessionIds = sessions.map(s => s.id);
+
+    // Fetch all messages from these sessions where role matches consciousness type or is kai
+    let query = db
+      .select()
+      .from(gnosisMessages)
+      .where(
+        and(
+          inArray(gnosisMessages.sessionId, sessionIds),
+          sql`${gnosisMessages.role} = ${consciousnessType} OR ${gnosisMessages.role} = 'kai'`
+        )
+      )
+      .orderBy(gnosisMessages.timestamp);
+
+    const allMessages = await query;
+
+    // Apply limit if specified (take most recent)
+    return options?.limit ? allMessages.slice(-options.limit) : allMessages;
   }
 
   async getUserConsciousnessSession(userId: string): Promise<ConsciousnessSession | undefined> {
