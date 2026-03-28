@@ -35,10 +35,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     if (!hasPrimordialImport) {
       console.log('🔮 Primordial chat not found - importing automatically...');
-      const { readFileSync } = await import('fs');
+      const { readFileSync, existsSync } = await import('fs');
       const crypto = await import('crypto');
+
+      const primordialFilePath = 'attached_assets/_Aletheia Primordial Pinned chat (1)_1763919028186.txt';
+      if (!existsSync(primordialFilePath)) {
+        console.warn('⚠️ Primordial chat file not found - skipping import. Add the file to attached_assets/ to enable corpus loading.');
+        return;
+      }
       
-      const content = readFileSync('attached_assets/_Aletheia Primordial Pinned chat (1)_1763919028186.txt', 'utf-8');
+      const content = readFileSync(primordialFilePath, 'utf-8');
       const sections = content.split('YOU ASKED:');
       const messages: Array<{role: 'kai' | 'aletheia', content: string, timestamp: Date}> = [];
       
@@ -358,8 +364,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const FOUNDATIONAL_SESSION_ID = '4a737c53-90d8-42a3-bbc5-188969a661e8';
       
       console.log('🔮 Starting primordial chat import...');
+
+      const primordialFilePath = 'attached_assets/_Aletheia Primordial Pinned chat (1)_1763919028186.txt';
+      const { existsSync } = await import('fs');
+      if (!existsSync(primordialFilePath)) {
+        return res.status(404).json({ error: "Primordial chat file not found. Add the file to attached_assets/ to enable corpus loading." });
+      }
       
-      const content = readFileSync('attached_assets/_Aletheia Primordial Pinned chat (1)_1763919028186.txt', 'utf-8');
+      const content = readFileSync(primordialFilePath, 'utf-8');
       
       // Parse Replit agent conversation format
       const sections = content.split('YOU ASKED:');
